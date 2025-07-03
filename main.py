@@ -1,10 +1,12 @@
 import logging
 import os
 import random
+import asyncio
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 API_TOKEN = os.getenv("BOT_TOKEN")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "").lower()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -69,8 +71,8 @@ async def send_welcome(message: types.Message):
 @dp.message_handler()
 async def handle_message(message: types.Message):
     if message.chat.type != "private":
-        if (message.reply_to_message and message.reply_to_message.from_user.username == bot.username) or \
-           (f"@{bot.username}" in message.text):
+        if (message.reply_to_message and message.reply_to_message.from_user.username.lower() == BOT_USERNAME) or \
+           (f"@{BOT_USERNAME}" in message.text.lower()):
             text = message.text.lower()
             if any(phrase in text for phrase in ["привіт", "хто тут", "не спить", "вільний"]):
                 await message.reply(get_group_intro(), reply_markup=menu_buttons)
@@ -115,5 +117,8 @@ async def how_to_chat(callback_query: types.CallbackQuery):
     await bot.send_message(callback_query.from_user.id,
         "Просто пиши мені як дівчині, яка тобі подобається 💌 Можеш фліртувати, питати, фантазувати... я відповім 😉")
 
+async def on_startup(dp):
+    await bot.delete_webhook(drop_pending_updates=True)
+
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
