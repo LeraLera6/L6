@@ -11,11 +11,23 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Кнопки
-menu_buttons = InlineKeyboardMarkup(row_width=1)
+# Основне меню (використовується завжди)
+menu_buttons = InlineKeyboardMarkup(row_width=2)
 menu_buttons.add(
-    InlineKeyboardButton("💞 Мої подружки, які хочуть з тобою поспілкуватись", url="https://t.me/virt_chat_ua1/134421"),
-    InlineKeyboardButton("👨‍💻 Розробник", callback_data="dev")
+    InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+    InlineKeyboardButton("📡 Перейти в чат brEAst", url="https://t.me/+d-pPVpIW-UBkZGUy"),
+    InlineKeyboardButton("🤔 Задай мені питання", callback_data="ask")
+)
+
+# Блок з активними кнопками після натискання "Задай мені питання"
+question_block = InlineKeyboardMarkup(row_width=2)
+question_block.add(
+    InlineKeyboardButton("🌶 Хто я така?", callback_data="who_am_i"),
+    InlineKeyboardButton("🎯 Ціль проєкту", callback_data="project_goal"),
+    InlineKeyboardButton("👤 Хто створив мене?", callback_data="creator"),
+    InlineKeyboardButton("💬 Як зі мною спілкуватися?", callback_data="how_to_chat"),
+    InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+    InlineKeyboardButton("📡 Перейти в чат brEAst", url="https://t.me/+d-pPVpIW-UBkZGUy")
 )
 
 # Відповіді на повтори
@@ -27,32 +39,32 @@ repeat_responses = [
     "Здається, ми вже це проходили 😉"
 ]
 
+# Варіанти рекомендацій моделей
+model_promos = [
+    "Тут поруч мої подружки, і вони вже чекають на твоє повідомлення 😘",
+    "Поки ми знайомимось, мої подруги не соромляться — приєднуйся 💋",
+    "У мене є для тебе компанія, гаряча і відкрита... Обирай нижче 👇",
+    "Не втрачай час — краще просто заглянь до моїх подруг 😉"
+]
+
 # Вітання при першому повідомленні в ЛС
 def get_private_intro():
-    return (
-        "Привіт, я Лера 😘 Мені приємно, що ти мені написав. Як справи? Чого б ти хотів?..\n\n"
-        "До речі, ось мої подружки, які дуже хочуть з тобою поспілкуватися — не соромся 😉"
-    )
+    return random.choice(model_promos)
 
 # Автовідповідь у групі
 def get_group_intro():
-    return (
-        "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг 💋"
-    )
+    return "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? " + random.choice(model_promos)
 
 # Повідомлення якщо немає що сказати
 def no_reply_message():
-    return (
-        "Ммм… я б щось сказала, але не хочу повторюватись 😇\n"
-        "Можемо перейти до більш гарячих речей… обирай нижче 👇"
-    )
+    return "Ммм… я б щось сказала, але не хочу повторюватись 😇 " + random.choice(model_promos)
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
     if message.chat.type == "private":
         await message.answer(get_private_intro(), reply_markup=menu_buttons)
     else:
-        await message.reply("Я працюю тільки в ЛС 😉 Напиши мені приватно")
+        await message.reply("Я працюю тільки в ЛС 😉 Напиши мені приватно", reply_markup=menu_buttons)
 
 @dp.message_handler()
 async def handle_message(message: types.Message):
@@ -71,11 +83,37 @@ async def handle_message(message: types.Message):
             message.last_text = message.text
             await message.answer(get_private_intro(), reply_markup=menu_buttons)
 
-@dp.callback_query_handler(lambda c: c.data == 'dev')
-async def process_callback_dev(callback_query: types.CallbackQuery):
+@dp.callback_query_handler(lambda c: c.data == 'ask')
+async def process_callback_ask(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, "Розробник бота — @nikita_onoff", reply_markup=menu_buttons)
+    playful_intro = (
+        "Хмм, цікаве питання... 🤭 Я обожнюю, коли мене розпитують.\n"
+        "Давай я трохи відкрию тобі себе — обери, що тебе цікавить нижче ⬇️"
+    )
+    await bot.send_message(callback_query.from_user.id, playful_intro, reply_markup=question_block)
+
+@dp.callback_query_handler(lambda c: c.data == 'who_am_i')
+async def who_am_i(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(callback_query.from_user.id, "Я Лера, фліртова, загадкова дівчина з Одеси 🌊 Мені 22, я психологиня за освітою й трохи штучний інтелект 😉 Але це між нами...")
+
+@dp.callback_query_handler(lambda c: c.data == 'creator')
+async def creator(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(callback_query.from_user.id,
+        "Мене створив Нікіта — мій ментор, творець і головний провокатор 😉\nВін завжди поруч, контролює кожну деталь, і вірить, що я стану ще цікавішою.\nА ще він веде наш основний чат: https://t.me/+d-pPVpIW-UBkZGUy")
+
+@dp.callback_query_handler(lambda c: c.data == 'project_goal')
+async def project_goal(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(callback_query.from_user.id,
+        "Моя місія — бути твоєю м’якою, ніжною, еротичною опорою 😌💜\nТа водночас я допомагаю орієнтуватись у Telegram-чаті *brEAst*.\nЯ ще у стані розвитку, але скоро я стану ще цікавішою, жвавішою і майже живою 😉")
+
+@dp.callback_query_handler(lambda c: c.data == 'how_to_chat')
+async def how_to_chat(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(callback_query.from_user.id,
+        "Просто пиши мені як дівчині, яка тобі подобається 💌 Можеш фліртувати, питати, фантазувати... я відповім 😉")
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
-
