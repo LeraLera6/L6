@@ -13,8 +13,8 @@ dp = Dispatcher(bot)
 def get_main_buttons():
     keyboard = InlineKeyboardMarkup(row_width=2)
     keyboard.add(
-        InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
-        InlineKeyboardButton("🛰 Перейти в чат brEAst", url="https://t.me/+d-pPVpIW-UBkZGUy"),
+        InlineKeyboardButton("💕 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+        InlineKeyboardButton("🛡 Перейти в чат brEAst", url="https://t.me/+d-pPVpIW-UBkZGUy"),
     )
     keyboard.add(
         InlineKeyboardButton("🤔 Задай мені питання", url="https://t.me/LERA_V6_bot")
@@ -25,15 +25,14 @@ def get_main_buttons():
 @dp.message_handler(lambda message: message.chat.type in ["group", "supergroup"])
 async def handle_group_message(message: types.Message):
     if message.text and (
-        "@LERA_V6_bot" in message.text or message.reply_to_message and message.reply_to_message.from_user.username == "LERA_V6_bot"
+        "@LERA_V6_bot" in message.text or (message.reply_to_message and message.reply_to_message.from_user.username == "LERA_V6_bot")
     ):
         text = (
-            "Ммм… я б щось сказала, але не хочу повторюватись 😅 "
-            "Поки ми знайомимось, мої подруги не соромляться — приєднуйся 💋"
+            "Ммм… я б щось сказала, але не хочу повторюватись 😅 Поки ми знайомимось, мої подруги не соромляться — приєднуйся 💋"
         )
         await message.reply(text, reply_markup=get_main_buttons())
 
-# Автовідповіді в ЛС
+# Відповіді в особистих повідомленнях
 @dp.message_handler(lambda message: message.chat.type == "private")
 async def handle_private_message(message: types.Message):
     user_first_name = message.from_user.first_name
