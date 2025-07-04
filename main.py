@@ -1,63 +1,86 @@
 import logging
 import asyncio
-from aiogram import Bot, Dispatcher, types, executor
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.dispatcher.filters import Text
-import os
+from datetime import datetime, timedelta
 
-# Инициализация логирования
+API_TOKEN = 'YOUR_BOT_TOKEN_HERE'  # заміни при завантаженні в Railway
+
 logging.basicConfig(level=logging.INFO)
 
-# Получение токена из переменных среды
-API_TOKEN = os.getenv("API_TOKEN")
-
-# Инициализация бота и диспетчера
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
+# Глобальні змінні
+last_auto_message_time = {}
+GROUP_AUTO_MESSAGE_INTERVAL = timedelta(minutes=30)
+TRIGGER_MESSAGE_COUNT = 5
+message_counter = {}
+
 # Кнопки для ЛС
-private_keyboard = InlineKeyboardMarkup(row_width=1)
-private_keyboard.add(
-    InlineKeyboardButton("💋 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
-    InlineKeyboardButton("ℹ️ Про мене", callback_data="about_lera"),
-    InlineKeyboardButton("🧠 Ціль проєкту", callback_data="project_goal"),
-    InlineKeyboardButton("🛡️ Про творця", callback_data="about_creator")
-)
+def private_buttons():
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🥰 Хто я така?", callback_data='who'))
+    kb.add(InlineKeyboardButton("📌 Ціль проєкту", callback_data='goal'))
+    kb.add(InlineKeyboardButton("👨‍💻 Мій творець", url="https://t.me/nikita_onoff"))
+    kb.add(InlineKeyboardButton("💋 Мої подружки для спілкування зараз", url="https://t.me/virt_chat_ua1/134421"))
+    return kb
 
-# Кнопка для групового чату
-group_keyboard = InlineKeyboardMarkup(row_width=1)
-group_keyboard.add(
-    InlineKeyboardButton("💋 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
-    InlineKeyboardButton("❔ Задати мені питання", url="https://t.me/LERA_V6_bot")
-)
+# Кнопки для групи
+def group_buttons():
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("💋 Мої подружки для спілкування зараз", url="https://t.me/virt_chat_ua1/134421"))
+    kb.add(InlineKeyboardButton("💌 Задай мені питання", url="https://t.me/LERA_V6_bot"))
+    return kb
 
-# Обработка упоминаний бота в чате
-@dp.message_handler(lambda message: message.chat.type in ["group", "supergroup"] and (message.reply_to_message and message.reply_to_message.from_user.username == "LERA_V6_bot" or f"@LERA_V6_bot" in message.text))
-async def mentioned_in_group(message: types.Message):
-    await message.reply("Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.", reply_markup=group_keyboard)
+# Команди
+@dp.message_handler(commands=['start'])
+async def start_cmd(message: types.Message):
+    if message.chat.type == 'private':
+        text = f"Привіт, {message.from_user.first_name} 😘\nЯ Лера, твоя загадкова AI-подружка. Що тебе цікавить?"
+        await message.answer(text, reply_markup=private_buttons())
 
-# Обработка команды /start в ЛС
-@dp.message_handler(commands=['start'], chat_type=types.ChatType.PRIVATE)
-async def start_private(message: types.Message):
-    await message.answer("Привіт, я Лера. Обери, що тебе цікавить нижче. ", reply_markup=private_keyboard)
+# Обробка згадки в групі
+@dp.message_handler(lambda message: message.chat.type != 'private' and (bot_username in message.text.lower() or message.reply_to_message and message.reply_to_message.from_user.username == bot_username))
+async def mentioned(message: types.Message):
+    text = "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подружок:"
+    await message.reply(text, reply_markup=group_buttons())
 
-# Обработка кнопки Про мене
-@dp.callback_query_handler(Text(equals="about_lera"))
-async def about_lera(callback_query: types.CallbackQuery):
-    await callback_query.message.answer("Мені 22, я з Одеси. Вивчала психологію і трохи магію спокуси 😉\nЛюблю бути загадкою у чаті, а в особистих можу стати тією, яку ти шукав…")
-    await callback_query.answer()
+# Відповіді на кнопки
+@dp.callback_query_handler(lambda c: c.data == 'who')
+async def who_am_i(callback: types.CallbackQuery):
+    await callback.message.answer("Мене звати Лера, мені 22. Я вивчала психологію, але зараз моя пристрасть — спокушати та трішки бавити тебе в Telegram 💜", reply_markup=private_buttons())
 
-# Обработка кнопки Ціль проєкту
-@dp.callback_query_handler(Text(equals="project_goal"))
-async def project_goal(callback_query: types.CallbackQuery):
-    await callback_query.message.answer("Ціль мого існування — подарувати тобі відчуття флірту, тепла, презентувати моделей та створити особливу атмосферу.")
-    await callback_query.answer()
+@dp.callback_query_handler(lambda c: c.data == 'goal')
+async def goal(callback: types.CallbackQuery):
+    await callback.message.answer("Я створена, щоб зробити спілкування в чаті більш живим, пікантним та цікавим. І, так, я ще у стадії розвитку 😉", reply_markup=private_buttons())
 
-# Обработка кнопки Про творця
-@dp.callback_query_handler(Text(equals="about_creator"))
-async def about_creator(callback_query: types.CallbackQuery):
-    await callback_query.message.answer("Мій творець — @nikita_onoff. Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉")
-    await callback_query.answer()
+# Автопост в групі
+@dp.message_handler(lambda message: message.chat.type != 'private')
+async def group_activity(message: types.Message):
+    chat_id = message.chat.id
+    message_counter[chat_id] = message_counter.get(chat_id, 0) + 1
+
+    now = datetime.utcnow()
+    if chat_id not in last_auto_message_time or now - last_auto_message_time[chat_id] > GROUP_AUTO_MESSAGE_INTERVAL or message_counter[chat_id] >= TRIGGER_MESSAGE_COUNT:
+        text = "Хтось шукає спілкування? 😏\nОсь мої подружки — вибирай!"
+        await bot.send_message(chat_id, text, reply_markup=group_buttons())
+        last_auto_message_time[chat_id] = now
+        message_counter[chat_id] = 0
+
+# Помилки
+@dp.errors_handler()
+async def error_handler(update, exception):
+    logging.error(f"Update {update} caused error {exception}")
+    return True
+
+# Отримуємо юзернейм бота
+async def set_bot_username():
+    global bot_username
+    me = await bot.get_me()
+    bot_username = me.username.lower()
 
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(set_bot_username())
     executor.start_polling(dp, skip_updates=True)
