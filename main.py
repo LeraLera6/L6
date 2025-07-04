@@ -3,11 +3,9 @@ import asyncio
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime, timedelta
-
 import os
 
 API_TOKEN = os.getenv("BOT_TOKEN")
-
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN)
@@ -15,7 +13,6 @@ dp = Dispatcher(bot)
 
 last_auto_message_time = {}
 GROUP_AUTO_MESSAGE_INTERVAL = timedelta(minutes=30)
-TRIGGER_MESSAGE_COUNT = 5
 message_counter = {}
 
 def private_buttons():
@@ -36,16 +33,10 @@ def group_buttons():
 async def handle_group_messages(message: types.Message):
     if message.chat.type in ["group", "supergroup"]:
         cid = message.chat.id
-        message_counter[cid] = message_counter.get(cid, 0) + 1
-
         now = datetime.now()
         last_time = last_auto_message_time.get(cid, datetime.min)
         if now - last_time >= GROUP_AUTO_MESSAGE_INTERVAL:
-            await bot.send_message(
-                cid,
-                "Я тут 😇 Хочеш когось особливого? Обери одну з моїх подруг:",
-                reply_markup=group_buttons()
-            )
+            await message.answer("Я тут 😇 Хочеш когось особливого? Обери одну з моїх подруг:", reply_markup=group_buttons())
             last_auto_message_time[cid] = now
 
 @dp.message_handler(commands=['start'])
