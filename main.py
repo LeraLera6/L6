@@ -65,7 +65,6 @@ async def send_welcome(message: types.Message):
 
 # --- АВТОПОСТИНГ У ГРУПІ ---
 async def autopost():
-    await bot.wait_until_ready()
     while True:
         await asyncio.sleep(1800)  # 30 хвилин
         for chat_id in active_group_chats:
