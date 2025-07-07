@@ -5,7 +5,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher.filters import CommandStart
 from datetime import datetime, timedelta
 
-API_TOKEN = "YOUR_TOKEN_HERE"
+API_TOKEN = "BOT_TOKEN"
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
