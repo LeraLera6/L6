@@ -5,10 +5,6 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.exceptions import Throttled
 
 API_TOKEN = os.getenv("API_TOKEN")
-
-if not API_TOKEN or ' ' in API_TOKEN:
-    raise ValueError("❌ API_TOKEN is invalid or contains spaces.")
-
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
