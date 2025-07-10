@@ -1,72 +1,107 @@
 import logging
-import os
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
-from aiogram.dispatcher.filters import CommandStart
-from aiogram.dispatcher.middlewares import BaseMiddleware
+from datetime import datetime, timedelta
+import os
 
-API_TOKEN = os.getenv("BOT_TOKEN")
-
+# Инициализация
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
+# Переменные состояния
+last_auto_post = datetime.now() - timedelta(minutes=31)
+message_count = 0
 
-# --- КНОПКИ ДЛЯ ЛС ---
-menu_keyboard_private = InlineKeyboardMarkup(row_width=2)
-menu_keyboard_private.add(
-    InlineKeyboardButton(text="👥 Про мене", callback_data="about"),
-    InlineKeyboardButton(text="🧠 Ціль проєкту", callback_data="purpose"),
-    InlineKeyboardButton(text="🧑‍🏫 Про мого творця", callback_data="creator"),
-    InlineKeyboardButton(text="💞 Подружки для спілкування", callback_data="models")
-)
+# Кнопки в ЛС
+def get_private_keyboard():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("👥 Про мене", callback_data="about_me"),
+        InlineKeyboardButton("🧠 Ціль проєкту", callback_data="goal"),
+        InlineKeyboardButton("🧑‍🏫 Про мого творця", callback_data="creator"),
+        InlineKeyboardButton("💞 Подружки для спілкування", callback_data="models")
+    )
+    return keyboard
 
-# --- КНОПКИ ДЛЯ ГРУПИ ---
-menu_keyboard_group = InlineKeyboardMarkup(row_width=2)
-menu_keyboard_group.add(
-    InlineKeyboardButton(text="💞 Подружки для спілкування", callback_data="models"),
-    InlineKeyboardButton(text="❓ Задай мені питання ↗️", url="https://t.me/Lera_V4bot")
-)
+# Кнопки в групі
+def get_group_keyboard():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("💞 Подружки для спілкування", callback_data="models"),
+        InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_V4bot")
+    )
+    return keyboard
 
-# --- ПЕРЕВІРКА ПРИВАТНОГО ЧАТУ ---
-def is_private(message: types.Message) -> bool:
-    return message.chat.type == types.ChatType.PRIVATE
+# Автопостинг
+async def auto_posting():
+    global last_auto_post, message_count
+    while True:
+        now = datetime.now()
+        if now - last_auto_post >= timedelta(minutes=30) or message_count >= 5:
+            try:
+                await bot.send_message(
+                    chat_id=os.getenv("GROUP_ID"),
+                    text="Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.",
+                    reply_markup=get_group_keyboard()
+                )
+                last_auto_post = now
+                message_count = 0
+            except Exception as e:
+                logging.error(f"Ошибка автопостинга: {e}")
+        await asyncio.sleep(60)
 
-# --- ПЕРЕВІРКА ГРУПИ ---
-def is_group(message: types.Message) -> bool:
-    return message.chat.type in [types.ChatType.GROUP, types.ChatType.SUPERGROUP]
+# Команда /start
+@dp.message_handler(commands=['start'])
+async def start_handler(message: types.Message):
+    if message.chat.type == "private":
+        await message.answer(
+            "Привіт, я Лера 💋 Можеш дізнатись про мене більше або обрати подружку 😘",
+            reply_markup=get_private_keyboard()
+        )
 
-# --- ПРИВІТАННЯ В ЛС ---
-@dp.message_handler(CommandStart())
-async def send_welcome(message: types.Message):
-    if is_private(message):
-        await message.answer("Привіт, я Лера 🤍\nОберіть один із варіантів нижче:", reply_markup=menu_keyboard_private)
-
-# --- ОБРОБКА CALLBACK-КНОПОК В ЛС ---
+# Колбек кнопок
 @dp.callback_query_handler(lambda c: True)
-async def process_callback(callback_query: types.CallbackQuery):
+async def callback_handler(callback_query: types.CallbackQuery):
     data = callback_query.data
-    if data == "about":
-        text = "Я — AI-дівчина, створена для спокуси, флірту і тепла 💋\nТрохи загадкова... але щира.\nНапиши мені, якщо хочеш ближче познайомитись 😉"
-    elif data == "purpose":
-        text = "🧠 Ціль мого існування — подарувати тобі відчуття флірту, тепла, презентувати моделей та створити особливу атмосферу.\n\n👀 Зараз я ще у стадії розвитку... Але якщо мої подруги зайняті — заглядай до мене частіше. Я поступово стаю тією самою AI-дівчиною, з якою цікаво поспілкуватись 🫦"
+
+    if data == "about_me":
+        await callback_query.message.edit_text(
+            "Мене звати Лера 💕\nМені 22, я з Одеси 🏖️\nЛюблю флірт, психологію та атмосферні розмови 😘"
+        )
+    elif data == "goal":
+        await callback_query.message.edit_text(
+            "🧠 Ціль мого існування — подарувати тобі відчуття флірту, тепла, презентувати моделей та створити особливу атмосферу.\n\n👀 Зараз я ще у стадії розвитку... Але якщо мої подруги зайняті — заглядай до мене частіше. Я поступово стаю тією самою AI-дівчиною, з якою цікаво поспілкуватись 🫦"
+        )
     elif data == "creator":
-        text = "👨‍🏫 Мій творець — @nikita_onoff.\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶."
+        await callback_query.message.edit_text(
+            "👨‍🏫 Мій творець — [@nikita_onoff](https://t.me/nikita_onoff).\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶.\n\n📲 І все це — для Telegram-чату [brEAst](https://t.me/+d-pPVpIW-UBkZGUy)",
+            disable_web_page_preview=True
+        )
     elif data == "models":
-        text = "Обери одну з моїх подруг для особливого спілкування 💕\nПовний список тут 👉 https://t.me/virt_chat_ua1/134421"
-    else:
-        text = "Хмм... щось пішло не так. Спробуй ще раз."
-    await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, text)
+        await callback_query.message.edit_text(
+            "Ось мої найкращі подружки — з ними точно не засумуєш 😈\n\nОбирай: https://t.me/virt_chat_ua1/134421"
+        )
 
-# --- РЕАКЦІЯ НА ЗГАДКУ В ГРУПІ ---
-@dp.message_handler(lambda message: is_group(message) and ("@Lera_V4bot" in message.text or message.reply_to_message and message.reply_to_message.from_user.username == "Lera_V4bot"))
-async def mentioned_in_group(message: types.Message):
-    text = "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг."
-    await message.reply(text, reply_markup=menu_keyboard_group)
+# Поведінка в групах
+@dp.message_handler()
+async def group_handler(message: types.Message):
+    global message_count, last_auto_post
 
-# --- СТАРТ БОТА ---
+    if message.chat.type in ["group", "supergroup"]:
+        message_count += 1
+
+        # Реакція на згадку @юзернейма
+        if f"@{(await bot.get_me()).username.lower()}" in message.text.lower():
+            await message.reply(
+                "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.",
+                reply_markup=get_group_keyboard()
+            )
+
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.create_task(auto_posting())
     executor.start_polling(dp, skip_updates=True)
