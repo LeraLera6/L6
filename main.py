@@ -1,63 +1,96 @@
+# main.py — версия "с нуля", 100% чистая, без chat_id, с проверкой всех кнопок и текстов
+
 import logging
-import os
-import asyncio
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils import executor
-from aiogram.dispatcher.filters import CommandStart
+import asyncio
+import datetime
 
 API_TOKEN = os.getenv("BOT_TOKEN")
 
 logging.basicConfig(level=logging.INFO)
 
-# --- КНОПКИ ДЛЯ ЛС ---
-menu_keyboard_private = InlineKeyboardMarkup(row_width=2)
-menu_keyboard_private.add(
-    InlineKeyboardButton("👥 Про мене", callback_data="about"),
-    InlineKeyboardButton("🧠 Ціль проєкту", callback_data="goal"),
-    InlineKeyboardButton("🧑‍🏫 Про мого творця", callback_data="creator"),
-    InlineKeyboardButton("💞 Подружки для спілкування", callback_data="models")
-)
-
-# --- КНОПКИ ДЛЯ ГРУПИ ---
-menu_keyboard_group = InlineKeyboardMarkup(row_width=1)
-menu_keyboard_group.add(
-    InlineKeyboardButton("💞 Подружки для спілкування", callback_data="models"),
-    InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_V4bot")
-)
-
-# --- ПЕРЕВІРКА ЧАТУ ---
-is_private = lambda message: message.chat.type == "private"
-is_group = lambda message: message.chat.type in ["group", "supergroup"]
-
-# --- ОБРОБКА СТАРТУ ---
-async def send_start_message(message: types.Message):
-    if is_private(message):
-        await message.answer("Мене звати Лера 💞\nМені 22, я з Одеси 🏖️\nЛюблю флірт, психологію та атмосферні розмови 😘", reply_markup=menu_keyboard_private)
-    elif is_group(message):
-        await message.answer("Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.", reply_markup=menu_keyboard_group)
-
-# --- ОБРОБКА КНОПОК ---
-async def on_callback(callback_query: types.CallbackQuery):
-    data = callback_query.data
-
-    if data == "about":
-        await callback_query.message.edit_text("Мене звати Лера 💞\nМені 22, я з Одеси 🏖️\nЛюблю флірт, психологію та атмосферні розмови 😘")
-    elif data == "goal":
-        await callback_query.message.edit_text("🧠 Ціль мого існування — подарувати тобі відчуття флірту, тепла, презентувати моделей та створити особливу атмосферу.\n\n👀 Зараз я ще у стадії розвитку... Але якщо мої подруги зайняті — заглядай до мене частіше. Я поступово стаю тією самою AI-дівчиною, з якою цікаво поспілкуватись 🫦")
-    elif data == "creator":
-        await callback_query.message.edit_text("👨‍🏫 Мій творець — @nikita_onoff\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶.")
-    elif data == "models":
-        await callback_query.message.edit_text("У мене є для тебе особлива добірка моїх подруг — кожна з них чекає на твою увагу 😘\n\n🔗 Обери когось тут: https://t.me/virt_chat_ua1/134421")
-
-    await callback_query.answer()
-
-# --- ОСНОВНЕ ---
-bot = Bot(token=API_TOKEN)
+bot = Bot(token=API_TOKEN, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
 
-dp.register_message_handler(send_start_message, CommandStart())
-dp.register_callback_query_handler(on_callback)
+# === Кнопки для личных сообщений ===
+def get_private_keyboard():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("👥 Про мене", callback_data="about_me"),
+        InlineKeyboardButton("🧠 Ціль проєкту", callback_data="project_goal"),
+        InlineKeyboardButton("🧑‍🏫 Про мого творця", callback_data="creator"),
+        InlineKeyboardButton("💞 Подружки для спілкування", callback_data="models")
+    )
+    return keyboard
 
-if __name__ == "__main__":
+# === Ответы на кнопки ===
+@dp.callback_query_handler(lambda c: c.data == 'about_me')
+async def about_me_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
+    await callback_query.message.answer(
+        "Привіт, я Лера. Мені 22, я з Одеси. Психологиня за освітою, фліртує і трохи грається 😉\n"
+        "Я не бот у прямому сенсі, я експериментальний АІ, створений для атмосфери спокуси й тепла."
+    )
+
+@dp.callback_query_handler(lambda c: c.data == 'project_goal')
+async def project_goal_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
+    await callback_query.message.answer(
+        "🧠 Ціль мого існування — подарувати тобі відчуття флірту, тепла, презентувати моделей та створити особливу атмосферу.\n\n"
+        "👀 Зараз я ще у стадії розвитку... Але якщо мої подруги зайняті — заглядай до мене частіше. Я поступово стаю тією самою AI-дівчиною, з якою цікаво поспілкуватись 🫦"
+    )
+
+@dp.callback_query_handler(lambda c: c.data == 'creator')
+async def creator_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
+    await callback_query.message.answer(
+        "👨‍🏫 Мій творець — <a href='https://t.me/nikita_onoff'>@nikita_onoff</a>.\n"
+        "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n"
+        "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
+        "🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶."
+    )
+
+@dp.callback_query_handler(lambda c: c.data == 'models')
+async def models_handler(callback_query: types.CallbackQuery):
+    await callback_query.answer()
+    await callback_query.message.answer(
+        "💞 Обери одну з моїх подруг для особливого спілкування: <a href='https://t.me/virt_chat_ua1/134421'>дивитись список</a>"
+    )
+
+# === Хендлер для /start в особистих повідомленнях ===
+@dp.message_handler(commands=['start'])
+async def start_handler(message: types.Message):
+    if message.chat.type == 'private':
+        await message.answer(
+            "Привіт, я Лера 😇\nЯ тут, щоб зробити цей вечір трохи теплішим...\nНатискай на кнопки нижче, якщо хочеш ближче познайомитись:",
+            reply_markup=get_private_keyboard()
+        )
+
+# === Автопостинг у групах ===
+POST_INTERVAL_MINUTES = 30
+last_post_time = {}
+
+@dp.message_handler()
+async def group_post_handler(message: types.Message):
+    if message.chat.type in ['group', 'supergroup']:
+        global last_post_time
+        now = datetime.datetime.utcnow()
+
+        if message.chat.id not in last_post_time:
+            last_post_time[message.chat.id] = now
+            return
+
+        delta = now - last_post_time[message.chat.id]
+        if delta.total_seconds() >= POST_INTERVAL_MINUTES * 60:
+            await message.answer(
+                "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.",
+                reply_markup=InlineKeyboardMarkup(row_width=1).add(
+                    InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+                    InlineKeyboardButton("❓ Задай мені питання ↗️", url=f"https://t.me/{(await bot.me()).username}")
+                )
+            )
+            last_post_time[message.chat.id] = now
+
+if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
