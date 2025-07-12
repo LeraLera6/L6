@@ -1,3 +1,5 @@
+# main.py — версия "с нуля", 100% чистая, без chat_id, с проверкой всех кнопок и текстов
+
 import logging
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
