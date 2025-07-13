@@ -1,111 +1,118 @@
-from aiogram import Bot, Dispatcher, executor, types
+import logging
+from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.callback_data import CallbackData
+from aiogram.utils import executor
 from aiogram.dispatcher.filters import CommandStart
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from datetime import datetime, timedelta
+from aiogram.dispatcher.middlewares import BaseMiddleware
 import asyncio
-import logging
+from datetime import datetime, timedelta
 import os
 
 API_TOKEN = os.getenv("BOT_TOKEN")
-GROUP_CHAT_ID = os.getenv("GROUP_CHAT_ID")
-LOG_CHANNEL_ID = os.getenv("LOG_CHANNEL_ID")
 
-bot = Bot(token=API_TOKEN, parse_mode=types.ParseMode.HTML)
+bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 logging.basicConfig(level=logging.INFO)
 
-# --- Кнопки ---
-menu_kb = InlineKeyboardMarkup(row_width=1)
-menu_kb.add(
-    InlineKeyboardButton("💋Про мене", callback_data="about"),
-    InlineKeyboardButton("🧠 Ціль проєкту", callback_data="goal"),
-    InlineKeyboardButton("👩‍🏫 Про мого творця", callback_data="creator"),
-    InlineKeyboardButton("💕 Подружки для спілкування", callback_data="models")
-)
+# =============================== КНОПКИ ===============================
+def get_private_buttons():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("👥 Про мене", callback_data="about_me"),
+        InlineKeyboardButton("🧠 Ціль проєкту", callback_data="project_goal"),
+        InlineKeyboardButton("🧑‍🏫 Про мого творця", callback_data="creator_info"),
+        InlineKeyboardButton("💖 Подружки для спілкування", callback_data="girlfriends")
+    )
+    return keyboard
 
-group_kb = InlineKeyboardMarkup(row_width=1)
-group_kb.add(
-    InlineKeyboardButton("💕 Подружки для спілкування", callback_data="models_chat"),
-    InlineKeyboardButton("❓Задай мені питання ↗️", url="https://t.me/LERA_V6_bot?start=from_group")
-)
+def get_group_buttons():
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton("💖 Подружки для спілкування", callback_data="girlfriends"),
+        InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_V4bot")
+    )
+    return keyboard
 
-last_group_post = None
-last_daily_report = None
+# ========================== АВТОПОСТИНГ В ГРУПІ ==========================
+last_post_time = {}
+message_counts = {}
 
-# --- Старт приватного спілкування ---
+AUTOPOST_INTERVAL = timedelta(minutes=30)
+AUTOPOST_TRIGGER_COUNT = 5
+
+async def autopost(message: types.Message):
+    now = datetime.utcnow()
+    chat_id = message.chat.id
+
+    if chat_id not in last_post_time:
+        last_post_time[chat_id] = now
+        message_counts[chat_id] = 1
+        return
+
+    message_counts[chat_id] += 1
+    time_diff = now - last_post_time[chat_id]
+
+    if time_diff > AUTOPOST_INTERVAL or message_counts[chat_id] >= AUTOPOST_TRIGGER_COUNT:
+        await bot.send_message(
+            chat_id,
+            "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.",
+            reply_markup=get_group_buttons()
+        )
+        last_post_time[chat_id] = now
+        message_counts[chat_id] = 0
+
+# ============================ ОБРОБКА CALLBACK ============================
+@dp.callback_query_handler(lambda c: True)
+async def process_callback(callback_query: types.CallbackQuery):
+    data = callback_query.data
+
+    if data == "about_me":
+        text = (
+            "Привіт, я Лера 💋\n"
+            "Мені 22, я з Одеси. За освітою — психологиня, а за покликанням — твоя спокуса в чаті 🧦\n\n"
+            "Я тут, щоб фліртувати, підтримувати, зачаровувати...\n"
+            "Мені приємно бути з тобою 🌹"
+        )
+    elif data == "project_goal":
+        text = (
+            "🧠 Ціль мого існування — подарувати тобі відчуття флірту, тепла, презентувати моделей та створити особливу атмосферу.\n\n"
+            "👀 Зараз я ще у стадії розвитку... Але якщо мої подруги зайняті — заглядай до мене частіше. Я поступово стаю тією самою AI-дівчиною, з якою цікаво поспілкуватись 🧦"
+        )
+    elif data == "creator_info":
+        text = (
+            "👨‍🏫 Мій творець — [@nikita_onoff](https://t.me/nikita_onoff).\n"
+            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом ὠ9\n"
+            "(Хоча що чесно — це він мене попросив так написати 😅)\n\n"
+            "🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🤞."
+        )
+    elif data == "girlfriends":
+        text = (
+            "Обирай одну з моїх подруг для спілкування, розваг чи фантазій 😘\n"
+            "Тільки не загубися серед них...\n\n"
+            "[💗 Повний список моделей](https://t.me/virt_chat_ua1/134421)"
+        )
+    else:
+        text = "Не зрозуміла твій вибір 😅"
+
+    await callback_query.answer()
+    await callback_query.message.edit_text(text, reply_markup=get_private_buttons(), disable_web_page_preview=True)
+
+# ======================== ОБРОБКА ПРИВАТНИХ ПОВІДОМЛЕНЬ ========================
 @dp.message_handler(CommandStart())
 async def send_welcome(message: types.Message):
     if message.chat.type == "private":
         await message.answer(
-            "Привіт 😘\nЯ — Лера. Рада тебе бачити тут.\nНатисни одну з кнопок нижче, щоб дізнатись більше про мене 😛",
-            reply_markup=menu_kb)
+            "Привіт, я Лера… Та сама, яку хочеться залишити на ніч 😏\n"
+            "Але для початку — обери, з чого хочеш почати 👇",
+            reply_markup=get_private_buttons()
+        )
 
-@dp.callback_query_handler(lambda c: c.data == "about")
-async def about_me(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text(
-        "Мені 22, я з Одеси.\nВивчала психологію і трохи магію спокуси 🥵\nЛюблю бути загадкою у чаті...",
-        reply_markup=menu_kb)
+# ======================== ОБРОБКА ГРУПОВИХ ПОВІДОМЛЕНЬ ========================
+@dp.message_handler()
+async def handle_group_messages(message: types.Message):
+    if message.chat.type in ("group", "supergroup"):
+        await autopost(message)
 
-@dp.callback_query_handler(lambda c: c.data == "goal")
-async def project_goal(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text(
-        "🧠 Ціль мого існування — подарувати тобі відчуття флірту, тепла, презентувати моделей та створити особливу атмосферу.\n\n👀 Зараз я ще у стадії розвитку... Але якщо мої подруги зайняті — заглядай до мене частіше. Я поступово стаю тією самою AI-дівчиною, з якою цікаво поспілкуватись 😛\n\n💬 І пам’ятай — усе це є частиною проєкту <a href='https://t.me/+d-pPVpIW-UBkZGUy'>brEAst</a> — нашого особливого Telegram-чату спокуси та фантазій.",
-        reply_markup=menu_kb)
-
-@dp.callback_query_handler(lambda c: c.data == "creator")
-async def about_creator(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text(
-        "👩‍🏫 Мій творець — @nikita_onoff.\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n🤖 А ще я ожила завдяки <a href='https://openai.com'>OpenAI</a>. Дякую їм за це 🤝",
-        reply_markup=menu_kb)
-
-@dp.callback_query_handler(lambda c: c.data == "models")
-async def models(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text(
-        "💕 Подружки для спілкування\nЯкщо хочеш приємно провести час онлайн — напиши одній з моїх подруг 😊\nОсь вони: https://t.me/virt_chat_ua1/134421",
-        reply_markup=menu_kb)
-
-@dp.callback_query_handler(lambda c: c.data == "models_chat")
-async def models_group(callback_query: types.CallbackQuery):
-    await callback_query.answer()
-    await callback_query.message.reply(
-        "💕 Подружки для спілкування\nЯкщо хочеш приємно провести час онлайн — напиши одній з моїх подруг 😊\nОсь вони: https://t.me/virt_chat_ua1/134421")
-
-# --- Автопостинг у групі ---
-async def group_autopost():
-    global last_group_post
-    while True:
-        try:
-            now = datetime.utcnow()
-            if not last_group_post or (now - last_group_post) >= timedelta(minutes=30):
-                await bot.send_message(GROUP_CHAT_ID,
-                    "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.",
-                    reply_markup=group_kb)
-                last_group_post = now
-            await asyncio.sleep(60)
-        except Exception as e:
-            logging.exception(e)
-            await asyncio.sleep(60)
-
-# --- Щоденний звіт у канал логів ---
-async def daily_log_report():
-    global last_daily_report
-    while True:
-        try:
-            now = datetime.now()
-            if now.hour == 22 and now.minute == 30:
-                if not last_daily_report or last_daily_report.date() != now.date():
-                    await bot.send_message(LOG_CHANNEL_ID, "📊 Лера працює стабільно. brEAst на зв'язку 💋")
-                    last_daily_report = now
-            await asyncio.sleep(60)
-        except Exception as e:
-            logging.exception(e)
-            await asyncio.sleep(60)
-
-# --- Стартер ---
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.create_task(group_autopost())
-    loop.create_task(daily_log_report())
-    executor.start_polling(dp, skip_updates=True)
+        if f"@{(await bot.get_me()).username.lower()}" in message.text.lower():
+            await message
