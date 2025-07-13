@@ -1,5 +1,3 @@
-# main.py — с логикой Evade Message Replay, без указания group_id, с полной актуальной структурой кнопок и текстов
-
 import logging
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
