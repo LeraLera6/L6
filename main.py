@@ -1,56 +1,39 @@
 import logging
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import openai
 import os
-from dotenv import load_dotenv
+import openai
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, CallbackQueryHandler, filters
 
-load_dotenv()
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-API_TOKEN = os.getenv("BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-logging.basicConfig(level=logging.INFO)
+START_KEYBOARD = InlineKeyboardMarkup([
+    [InlineKeyboardButton("💞 Подружки для спілкування", callback_data="girls")],
+    [InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy")],
+    [InlineKeyboardButton("💬 Задай мені питання", callback_data="ask")],
+    [InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="creator")],
+])
 
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
+START_MESSAGE = "Я знаю, чим тебе зацікавити 😉 Обирай одну з кнопок нижче та занурюйся..."
 
-openai.api_key = OPENAI_API_KEY
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(START_MESSAGE, reply_markup=START_KEYBOARD)
 
-# Головне меню
-def get_main_menu():
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("💞 Подружки для спілкування", callback_data="models"),
-        InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy"),
-        InlineKeyboardButton("💬 Задай мені питання", callback_data="ask_me"),
-        InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="about_creator")
-    )
-    return keyboard
+async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-# Привітальне повідомлення
-@dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
-    await message.answer(
-        "Привіт, я Лера 🫦\n"
-        "Твоя AI-подруга для флірту, тепла і особливих моментів. Обери кнопку нижче 👇",
-        reply_markup=get_main_menu()
-    )
-
-# Обробка кнопок
-@dp.callback_query_handler(lambda c: c.data)
-async def process_callback(callback_query: types.CallbackQuery):
-    data = callback_query.data
-
-    if data == "models":
-        await bot.send_message(callback_query.from_user.id,
+    if query.data == "girls":
+        await query.message.reply_text(
             "У мене є подруги, які готові на більше…\n"
             "💋 Обери свою за настроєм — ось наш список:\n"
             "👉 https://t.me/virt_chat_ua1/134421"
         )
 
-    elif data == "about_creator":
-        await bot.send_message(callback_query.from_user.id,
+    elif query.data == "creator":
+        await query.message.reply_text(
             "👨‍🏫 Мій творець — @nikita_onoff\n"
             "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n"
             "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
@@ -59,29 +42,40 @@ async def process_callback(callback_query: types.CallbackQuery):
             parse_mode="Markdown"
         )
 
-    elif data == "ask_me":
-        await bot.send_message(callback_query.from_user.id,
-            "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋\n"
+    elif query.data == "ask":
+        await query.message.reply_text(
+            "Пиши мені будь-що — я відповім як твоя AI-подруга 💋\n"
             "Можеш питати серйозне, грайливе або просто поговорити."
         )
+        context.user_data['chat_mode'] = True
 
-# Обробка GPT
-@dp.message_handler()
-async def handle_gpt(message: types.Message):
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4-0613",
-            messages=[
-                {"role": "system", "content": "Ти — фліртова AI-дівчина Лера з Одеси, ніжна, але з характером."},
-                {"role": "user", "content": message.text}
-            ]
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get('chat_mode'):
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Ти фліртова AI-подруга. Відповідай з ніжністю, але з інтригою."},
+                    {"role": "user", "content": update.message.text},
+                ]
+            )
+            reply_text = response.choices[0].message.content
+        except Exception as e:
+            reply_text = f"🔧 Щось пішло не так...\n\n```
+{e}
+```"
+        await update.message.reply_text(reply_text, parse_mode="Markdown")
+    else:
+        await update.message.reply_text(
+            "Я тут, щоб фліртувати та спілкуватись. Натисни кнопку нижче, щоб почати!",
+            reply_markup=START_KEYBOARD
         )
-        reply = response.choices[0].message['content']
-        await message.reply(reply)
-
-    except Exception as e:
-        print(f"OpenAI error: {e}")
-        await message.reply("Ой… Здається, я зависла 🫣 Напиши ще раз трохи пізніше.")
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(handle_buttons))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+
+    app.run_polling()
