@@ -20,7 +20,7 @@ message_count = {}
 def get_group_message():
     keyboard = [
         [
-            InlineKeyboardButton("💕 Мої подружки", url="https://t.me/virt_chat_ua1/134421"),
+            InlineKeyboardButton("💞 Мої подружки", url="https://t.me/virt_chat_ua1/134421"),
             InlineKeyboardButton("💬 Задай мені питання ↗️", url="https://t.me/Lera_V8_Bot"),
         ]
     ]
@@ -31,7 +31,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type != "private":
         return
     keyboard = [
-        [InlineKeyboardButton("💕 Подружки для спілкування", callback_data="friends")],
+        [InlineKeyboardButton("💞 Подружки для спілкування", callback_data="friends")],
         [InlineKeyboardButton("🔞 Заглянь у чат 18+", callback_data="chat18")],
         [InlineKeyboardButton("💬 Задай мені питання", callback_data="ask")],
         [InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="creator")],
@@ -62,7 +62,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["mode"] = "chat"
     elif query.data == "creator":
         await query.message.reply_text(
-            "👨‍🏫 Мій творець — @nikita_onoff\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом  \u😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n💡 Усе це — частина проєкту brEAst, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.\n\n🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫆"
+            "👨‍🏫 Мій творець — @nikita_onoff\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n💡 Усе це — частина проєкту brEAst, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.\n\n🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶"
         )
     elif query.data == "abilities":
         await query.message.reply_text(
@@ -94,6 +94,7 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     now = datetime.now()
 
+    # ініціалізація
     if chat_id not in last_post_time:
         last_post_time[chat_id] = now
         message_count[chat_id] = 0
@@ -115,4 +116,4 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run
+    app.run_polling()
