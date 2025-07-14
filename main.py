@@ -1,61 +1,103 @@
+import logging
 import os
-from aiogram import Bot, Dispatcher, types, executor
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from openai import OpenAI
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils import executor
+from aiogram.dispatcher.filters import CommandStart
+from datetime import datetime, timedelta
+import openai
 
-# Telegram bot initialization
-bot = Bot(token=os.getenv("BOT_TOKEN"))
+# Настройки логирования
+logging.basicConfig(level=logging.INFO)
+
+# Токен и ключ API
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
+
+# Инициализация бота и диспетчера
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
-# OpenAI initialization (v1.0.0+)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Переменные для автопостинга
+last_post_time = datetime.now() - timedelta(minutes=30)
+message_counter = 0
 
-# Constants
-CHAT_LINK = "https://t.me/+d-pPVpIW-UBkZGUy"
-MODELS_LINK = "https://t.me/virt_chat_ua1/134421"
-OPENAI_LINK = "https://openai.com"
-
-# Main menu
-main_menu = InlineKeyboardMarkup(row_width=1).add(
-    InlineKeyboardButton("💕 Подружки для спілкування", callback_data="girls"),
-    InlineKeyboardButton("🔞 Заглянь у чат 18+", callback_data="chat"),
-    InlineKeyboardButton("💬 Задай мені питання", callback_data="ask"),
-    InlineKeyboardButton("👨‍🏫 Про творця", callback_data="creator")
+# Клавиатура для ЛС
+private_keyboard = InlineKeyboardMarkup(row_width=1)
+private_keyboard.add(
+    InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+    InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy"),
+    InlineKeyboardButton("💬 Задай мені питання", callback_data="ask_ai"),
+    InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="about_creator")
 )
 
-@dp.message_handler(commands=["start"])
-async def start_cmd(message: types.Message):
-    await message.answer(
-        "Привіт 😊\nЯ Лера — твоя AI-подруга. Обирай, що цікавить е:",
-        reply_markup=main_menu
+# Клавиатура для чата
+group_keyboard = InlineKeyboardMarkup(row_width=1)
+group_keyboard.add(
+    InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+    InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_V4bot")
+)
+
+# Обработка команды /start
+@dp.message_handler(CommandStart())
+async def start(message: types.Message):
+    if message.chat.type == 'private':
+        await message.answer(
+            "Привіт, я Лера 💋\nТвоя AI-подруга для флірту та спокуси. Обери один із варіантів нижче:",
+            reply_markup=private_keyboard
+        )
+
+# Обработка callback-кнопок
+@dp.callback_query_handler(lambda c: c.data == 'about_creator')
+async def about_creator(callback_query: types.CallbackQuery):
+    text = (
+        "👨‍🏫 Мій творець — @nikita_onoff\n"
+        "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n"
+        "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
+        "💡 Усе це — частина проєкту [brEAst](https://t.me/+d-pPVpIW-UBkZGUy), створеного з ідеєю поєднати AI, спокусу та свободу спілкування.\n\n"
+        "🤖 А ще я ожила завдяки магії [OpenAI](https://openai.com). Дякую їм за це 🫶"
     )
+    await callback_query.message.edit_text(text, parse_mode="Markdown")
 
-@dp.callback_query_handler(lambda c: True)
-async def handle_callbacks(callback: types.CallbackQuery):
-    data = callback.data
+@dp.callback_query_handler(lambda c: c.data == 'ask_ai')
+async def ask_ai_handler(callback_query: types.CallbackQuery):
+    await callback_query.message.answer("Пиши мені будь-що — я відповім як твоя AI-подруга 💋")
 
-    if data == "girls":
-        await callback.message.answer(
-            "У мене є подруги, які готові на більше...\n💋 Обери свою за настроєм — ось наш список:\n👉 " + MODELS_LINK
+# Обработка обычных сообщений в ЛС
+@dp.message_handler(lambda message: message.chat.type == 'private')
+async def private_chat_handler(message: types.Message):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": message.text}]
         )
-    elif data == "chat":
-        await callback.message.answer(
-            "Там усе трохи інакше...\n🔞 Відверті розмови, інтимні жарти, і я в трохи іншому образі 😈\n👉 " + CHAT_LINK
-        )
-    elif data == "creator":
-        await callback.message.answer(
-            "👨‍🏫 Мій творець — @nikita_onoff\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n💡 Усе це — частина проєкту brEAst, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.\n\n🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🤝\n⬇️ " + OPENAI_LINK
-        )
-    elif data == "ask":
-        await callback.message.answer("🤔 Напиши мені будь-що — я відповім як твоя AI-подруга 💋")
+        reply_text = response.choices[0].message['content']
+        await message.answer(reply_text)
+    except Exception as e:
+        await message.answer("Щось пішло не так 😢 Спробуй ще раз пізніше.")
+        logging.error(f"OpenAI error: {e}")
 
-@dp.message_handler()
-async def handle_message(message: types.Message):
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": message.text}]
-    )
-    await message.reply(response.choices[0].message.content)
+# Обработка сообщений в группе
+@dp.message_handler(lambda message: message.chat.type in ['group', 'supergroup'])
+async def group_handler(message: types.Message):
+    global last_post_time, message_counter
 
-if __name__ == "__main__":
-    executor.start_polling(dp)
+    message_counter += 1
+
+    if f"@{(await bot.get_me()).username.lower()}" in message.text.lower() or message.reply_to_message and message.reply_to_message.from_user.id == (await bot.get_me()).id:
+        await message.reply(
+            "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.",
+            reply_markup=group_keyboard
+        )
+    elif datetime.now() - last_post_time >= timedelta(minutes=30) or message_counter >= 5:
+        await message.reply(
+            "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.",
+            reply_markup=group_keyboard
+        )
+        message_counter = 0
+        last_post_time = datetime.now()
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
