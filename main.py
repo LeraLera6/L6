@@ -87,7 +87,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply = response.choices[0].message.content
         await update.message.reply_text(reply)
     except Exception as e:
-        except Exception as e:
     await update.message.reply_text(f"⚠️ Помилка: {str(e)}")
 # Автопостинг у групах
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
