@@ -81,4 +81,7 @@ async def handle_gpt(message: types.Message):
 
     except Exception as e:
         print(f"OpenAI error: {e}")
-        await message.reply("
+        await message.reply("Ой… Здається, я зависла 🫣 Напиши ще раз трохи пізніше.")
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
