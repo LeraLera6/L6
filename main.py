@@ -3,14 +3,16 @@ import os
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters, CallbackQueryHandler, CommandHandler
+
 from openai import AsyncOpenAI
 
-# Логування
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+openai_client = AsyncOpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url="https://api.openai.com/v1",
+    organization=None,
+)
 
-# OpenAI
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+GPT_ID = os.getenv("GPT_ID")
 
 # Telegram токен
 BOT_TOKEN = os.getenv("BOT_TOKEN")
