@@ -59,7 +59,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
         await update.message.reply_text(
-            "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋"\n"
+            "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋\n"
             "Можеш питати серйозне, грайливе або просто поговорити.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421")],
