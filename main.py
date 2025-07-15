@@ -34,7 +34,6 @@ POST_BUTTONS = InlineKeyboardMarkup([
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         start_text = "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋\nМожеш питати серйозне, грайливе або просто поговорити."
-"
         "Можеш питати серйозне, грайливе або просто поговорити.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421")],
