@@ -34,9 +34,31 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "ask":
+        context.user_data["chat_mode"] = True
         await query.message.reply_text(
             "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋\n"
             "Можеш питати серйозне, грайливе або просто поговорити."
+        )
+    elif query.data == "creator":
+        await query.message.reply_text(
+            "👨‍🏫 Мій творець — @nikita_onoff\n"
+            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n"
+            "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
+            "🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶"
+        )
+    elif query.data == "skills":
+        await query.message.reply_text(
+            "Я вмію:\n"
+            "— відповідати на складні питання\n"
+            "— допомагати з текстами, думками, ідеями\n"
+            "— фліртувати ніжно або з вогником 😉\n"
+            "— і ще багато чого — просто напиши 💬"
+        )
+    elif query.data == "girls":
+        await query.message.reply_text(
+            "У мене є подруги, які готові на більше…\n"
+            "💋 Обери свою за настроєм — ось наш список:\n"
+            "👉 https://t.me/virt_chat_ua1/134421"
         )
 
 # Команда /start
@@ -58,6 +80,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type != "private":
         return
+    if not context.user_data.get("chat_mode", False):
+        return
     try:
         response = await openai_client.chat.completions.create(
             model="gpt-4.1-mini",
@@ -70,7 +94,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"⚠️ Помилка: {e}")
 
-# Автопостинг у групах
+# Автопостинг у групах без відповіді на користувачів
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     now = datetime.now()
@@ -81,7 +105,6 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message_count[chat_id] += 1
 
-    # Перевірка за часом або кількістю повідомлень
     if (now - last_post_time[chat_id]) >= POST_INTERVAL or message_count[chat_id] >= 5:
         last_post_time[chat_id] = now
         message_count[chat_id] = 0
@@ -97,9 +120,9 @@ def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(handle_buttons))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
-    app.add_handler(CallbackQueryHandler(handle_buttons))
 
     app.run_polling()
 
