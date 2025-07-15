@@ -1,3 +1,48 @@
+import os
+from telegram import Update
+from telegram.ext import ContextTypes
+from openai import AsyncOpenAI
+from openai.types.beta.threads import Message
+
+openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.chat.type != "private":
+        return
+    try:
+        assistant_id = os.getenv("OPENAI_ASSISTANT_ID")
+        project_id = os.getenv("OPENAI_PROJECT_ID")
+
+        thread = await openai_client.beta.threads.create()
+        await openai_client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=update.message.text
+        )
+
+        run = await openai_client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant_id,
+            project=project_id
+        )
+
+        while True:
+            run_status = await openai_client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id,
+            )
+            if run_status.status == "completed":
+                break
+
+        messages = await openai_client.beta.threads.messages.list(thread_id=thread.id)
+        reply = messages.data[0].content[0].text.value
+        await update.message.reply_text(reply)
+
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Помилка: {e}")
+
+
+
 import logging
 import os
 from datetime import datetime, timedelta
