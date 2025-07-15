@@ -1,117 +1,83 @@
-import logging
 import os
-from datetime import datetime, timedelta
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters, CallbackQueryHandler, CommandHandler
+import logging
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ReplyKeyboardRemove
+from aiogram.utils import executor
 from openai import AsyncOpenAI
 
-# Логування
+API_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ASSISTANT_ID = os.getenv("ASSISTANT_ID")
+
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
 
-# OpenAI
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-# Telegram токен
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# Основне меню
+main_menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
+main_menu.add("💞 Подружки для спілкування")
+main_menu.add("🔞 Заглянь у чат 18+")
+main_menu.add("🧑‍🏫 Про творця")
+main_menu.add("🧠 Що я вмію")
 
-# Автопостинг
-last_post_time = {}
-message_count = {}
-POST_INTERVAL = timedelta(minutes=30)
-POST_MESSAGE = "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг."
-POST_BUTTONS = InlineKeyboardMarkup([
-    [InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421")],
-    [InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_v10_bot")]
-])
+@dp.message_handler(commands=["start"])
+async def start_cmd(message: types.Message):
+    await message.reply(
+        "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋\nМожеш питати серйозне, грайливе або просто поговорити.",
+        reply_markup=main_menu,
+    )
 
-# Обробка кнопок у ЛС
-async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+@dp.message_handler(lambda message: message.text == "💞 Подружки для спілкування")
+async def friends_handler(message: types.Message):
+    await message.reply(
+        "У мене є подруги, які готові на більше…\n💋 Обери свою за настроєм — ось наш список:\n👉 https://t.me/virt_chat_ua1/134421"
+    )
 
-    if query.data == "about":
-        await query.message.reply_text(
-            "Мене звати Лера, мені 22 і я з Одеси 🐚\n"
-            "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉\n\n"
-            "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.\n"
-            "Можеш говорити зі мною про все — я поруч 💋"
-        )
+@dp.message_handler(lambda message: message.text == "🔞 Заглянь у чат 18+")
+async def group_handler(message: types.Message):
+    await message.reply(
+        "Там усе трохи інакше…\n🔞 Відверті розмови, інтимні жарти, і я в трохи іншому образі 😈\n👉 https://t.me/+d-pPVpIW-UBkZGUy"
+    )
 
-    elif query.data == "creator":
-        await query.message.reply_text(
-            "👨‍🏫 Мій творець — [@nikita_onoff](https://t.me/nikita_onoff)\n"
-            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n"
-            "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
-            "💡 Усе це — частина проєкту [brEAst](https://t.me/+d-pPVpIW-UBkZGUy), створеного з ідеєю поєднати AI, спокусу та свободу спілкування.\n\n"
-            "🤖 А ще я ожила завдяки магії [OpenAI](https://openai.com). Дякую їм за це 🫶",
-            parse_mode="Markdown"
-        )
+@dp.message_handler(lambda message: message.text == "🧑‍🏫 Про творця")
+async def creator_handler(message: types.Message):
+    await message.reply(
+        "👨‍🏫 Мій творець — @nikita_onoff\nНестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n💡 Усе це — частина проєкту brEAst, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.\n\n🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶"
+    )
 
-    elif query.data == "girls":
-        await query.message.reply_text(
-            "У мене є подруги, які готові на більше…\n"
-            "💋 Обери свою за настроєм — ось наш список:\n"
-            "👉 https://t.me/virt_chat_ua1/134421"
-        )
+@dp.message_handler(lambda message: message.text == "🧠 Що я вмію")
+async def about_handler(message: types.Message):
+    await message.reply(
+        "Я вмію:\n— відповідати на складні питання\n— допомагати з текстами, думками, ідеями\n— фліртувати ніжно або з вогником 😉\n— і ще багато чого — просто напиши 💬"
+    )
 
-# Старт у ЛС
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type == "private":
-        await update.message.reply_text(
-            "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋\n"
-            "Можеш питати серйозне, грайливе або просто поговорити.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421")],
-                [InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy")],
-                [InlineKeyboardButton("👥 Про мене", callback_data="about")],
-                [InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="creator")]
-            ])
-        )
-
-# GPT-чат
-async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type != "private":
-        return
+@dp.message_handler()
+async def chat_with_ai(message: types.Message):
     try:
-        response = await openai_client.chat.completions.create(
-        assistant_id=os.getenv("ASSISTANT_ID"),
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": update.message.text}]
+        thread = await client.beta.threads.create()
+        await client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=message.text
         )
-        reply = response.choices[0].message.content
-        await update.message.reply_text(reply)
+        run = await client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=ASSISTANT_ID
+        )
+        while run.status != "completed":
+            await asyncio.sleep(1)
+            run = await client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+        messages = await client.beta.threads.messages.list(thread_id=thread.id)
+        response = messages.data[0].content[0].text.value
+        await message.reply(response)
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Помилка: {e}")
+        await message.reply(f"⚠️ Помилка: {e}")
 
-# Група — автопостинг
-async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    now = datetime.now()
-
-    if chat_id not in last_post_time:
-        last_post_time[chat_id] = now
-        message_count[chat_id] = 0
-
-    message_count[chat_id] += 1
-
-    if (now - last_post_time[chat_id]) >= POST_INTERVAL or message_count[chat_id] >= 5:
-        last_post_time[chat_id] = now
-        message_count[chat_id] = 0
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=POST_MESSAGE,
-            reply_markup=POST_BUTTONS
-        )
-
-# Запуск
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(handle_buttons))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
-    app.run_polling()
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)
