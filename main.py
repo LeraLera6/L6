@@ -22,7 +22,7 @@ POST_INTERVAL = timedelta(minutes=30)
 POST_MESSAGE = "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг."
 POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421")],
-    [InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_V8_bot")]
+    [InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_v10_bot")]
 ])
 
 # Обробка кнопок у ЛС
@@ -75,6 +75,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     try:
         response = await openai_client.chat.completions.create(
+        assistant_id=os.getenv("ASSISTANT_ID"),
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": update.message.text}]
         )
