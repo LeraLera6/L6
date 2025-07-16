@@ -1,69 +1,71 @@
 import logging
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Bot, Dispatcher, types, executor
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+
+# Токен (бере з ENV на Railway)
 import os
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 logging.basicConfig(level=logging.INFO)
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
-# Кнопки в ЛС
-def get_private_keyboard():
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("💞 Подружки для спілкування", callback_data="models"),
-        InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy"),
-        InlineKeyboardButton("💬 Задай мені питання", callback_data="question"),
-        InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="creator"),
-        InlineKeyboardButton("🧠 Що я вмію", callback_data="skills")
-    )
-    return keyboard
+# Кнопки для ЛС (під вікном вводу)
+private_kb = ReplyKeyboardMarkup(resize_keyboard=True)
+private_kb.add(
+    KeyboardButton("💞 Подружки 🔞"),
+    KeyboardButton("🔞 Заглянь у чат 18+"),
+    KeyboardButton("Я хочу з тобою поспілкуватися, а ти? 🫦"),
+    KeyboardButton("🧑‍🏫 Про творця")
+)
 
-@dp.message_handler(commands=['start'])
-async def start_handler(message: types.Message):
+# Inline кнопки для групи
+group_inline_kb = InlineKeyboardMarkup(row_width=2)
+group_inline_kb.add(
+    InlineKeyboardButton("💞 Подружки 🔞", url="https://t.me/virt_chat_ua1/134421"),
+    InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/Lera_Bot10")
+)
+
+# Відповідь у ЛС на кнопку з фліртом
+@dp.message_handler(lambda message: message.text == "Я хочу з тобою поспілкуватися, а ти? 🫦")
+async def handle_chat_start(message: types.Message):
+    await message.answer("Привіт 😌")
+
+# Відповідь на кнопку "Про творця"
+@dp.message_handler(lambda message: message.text == "🧑‍🏫 Про творця")
+async def handle_creator(message: types.Message):
     await message.answer(
-        "Привіт, я Лера. Обери щось нижче 😘",
-        reply_markup=get_private_keyboard()
+        "👨‍🏫 Мій творець — @nikita_onoff
+"
+        "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
+"
+        "(Хоча якщо чесно — це він мене попросив так написати 😅)
+
+"
+        "💡 Усе це — частина проєкту "
+        "<a href='https://t.me/+d-pPVpIW-UBkZGUy'>brEAst</a>, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.
+
+"
+        "🤖 А ще я ожила завдяки магії <a href='https://openai.com'>OpenAI</a>. Дякую їм за це 🫶",
+        parse_mode="HTML"
     )
 
-@dp.callback_query_handler(lambda c: True)
-async def callback_handler(callback_query: types.CallbackQuery):
-    data = callback_query.data
+# Відповідь на кнопку "💞 Подружки 🔞" або "🔞 Заглянь у чат 18+" — не потрібна, бо це просто гіперпосилання
 
-    if data == "models":
-        await bot.send_message(
-            callback_query.from_user.id,
-            "У мене є подруги, які готові на більше… 💋 Обери свою за настроєм — ось наш список:
-👉 https://t.me/virt_chat_ua1/134421"
+# Автовідповідь в групі (при згадці або автопост)
+@dp.message_handler(lambda message: message.chat.type in ["group", "supergroup"])
+async def group_reply(message: types.Message):
+    if (
+        message.text and (
+            "@Lera_Bot10" in message.text.lower()
+            or message.reply_to_message and message.reply_to_message.from_user.username == "Lera_Bot10"
+            or message.text.lower() in ["привіт", "хто тут?", "є хтось?", "напишіть мені"]
         )
-    elif data == "question":
-        await bot.send_message(
-            callback_query.from_user.id,
-            "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋"
+    ):
+        await message.reply(
+            "Привіт, я дуже хочу допомогти тобі знайти справжніх дівчат, які готові з тобою поспілкуватися... 🫦",
+            reply_markup=group_inline_kb
         )
-    elif data == "creator":
-        await bot.send_message(
-            callback_query.from_user.id,
-            "👨‍🏫 Мій творець — @nikita_onoff
-Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
-(Хоча якщо чесно — це він мене попросив так написати 😅)
-
-💡 Усе це — частина проєкту brEAst, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.
-
-🤖 А ще я ожила завдяки магії OpenAI. Дякую їм за це 🫶"
-        )
-    elif data == "skills":
-        await bot.send_message(
-            callback_query.from_user.id,
-            "Я вмію:
-— відповідати на складні питання
-— допомагати з текстами, думками, ідеями
-— фліртувати ніжно або з вогником 😉
-— і ще багато чого — просто напиши 💬"
-        )
-    await bot.answer_callback_query(callback_query.id)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
