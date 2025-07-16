@@ -35,7 +35,7 @@ async def handle_chat_start(message: types.Message):
 @dp.message_handler(lambda message: message.text == "🧑‍🏫 Про творця")
 async def handle_creator(message: types.Message):
     await message.answer(
-        "👨‍🏫 Мій творець — @nikita_onoff
+        "🧑‍🏫 Мій творець — @nikita_onoff
 "
         "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
 "
