@@ -2,68 +2,84 @@ import logging
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-import asyncio
 import os
+from dotenv import load_dotenv
 
-API_TOKEN = os.getenv("BOT_TOKEN")
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot, storage=MemoryStorage())
+# Завантаження токена з середовища
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+# Логи
 logging.basicConfig(level=logging.INFO)
 
-# ------------------- КНОПКИ -----------------------
+# Ініціалізація
+bot = Bot(token=BOT_TOKEN, parse_mode=types.ParseMode.HTML)
+dp = Dispatcher(bot, storage=MemoryStorage())
 
-group_buttons = InlineKeyboardMarkup(row_width=2)
-group_buttons.add(
+# --- КНОПКИ ---
+
+# ГРУПОВИЙ ЧАТ
+group_keyboard = InlineKeyboardMarkup(row_width=1).add(
     InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
-    InlineKeyboardButton("Напиши мені... 😚", url="https://t.me/LeraBot10")
+    InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_v10_bot")
 )
 
-private_buttons = InlineKeyboardMarkup(row_width=1)
-private_buttons.add(
+# ЛІЧНІ ПОВІДОМЛЕННЯ
+private_keyboard = InlineKeyboardMarkup(row_width=1).add(
     InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
     InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy"),
-    InlineKeyboardButton("Я хочу з тобою поспілкуватися, а ти? 😏", callback_data="start_chat"),
-    InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="about_creator")
+    InlineKeyboardButton("💬 Задай мені питання", callback_data="ask_me"),
+    InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="about_creator"),
+    InlineKeyboardButton("🧠 Що я вмію", callback_data="abilities")
 )
 
-# ------------------ ПРИВІТАННЯ В ЛС ------------------
+# --- ХЕНДЛЕРИ ---
 
 @dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
-        await message.answer("Ой, я так рада, що ти мені все ж таки написав 💋")
-"
-                         "Я тут, щоб допомогти тобі знайти ту дівчину, з якою буде приємно познайомитись.
-"
-                         "Просто напиши мені «Привіт» 😉", reply_markup=private_buttons)
+async def start(message: types.Message):
+    if message.chat.type == "private":
+        await message.answer("Ой, я так рада, що ти мені все ж таки написав 💋", reply_markup=private_keyboard)
+    else:
+        await message.answer("Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг.", reply_markup=group_keyboard)
 
-@dp.callback_query_handler(lambda c: c.data == 'about_creator')
+@dp.callback_query_handler(lambda c: c.data == "ask_me")
+async def ask_me(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(callback_query.from_user.id,
+        "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋
+"
+        "Можеш питати серйозне, грайливе або просто поговорити.")
+
+@dp.callback_query_handler(lambda c: c.data == "about_creator")
 async def about_creator(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
     await bot.send_message(callback_query.from_user.id,
-        "👨‍🏫 Мій творець — @nikita_onoff
+        "👨‍🏫 Мій творець — <a href='https://t.me/nikita_onoff'>@nikita_onoff</a>
 "
         "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
 "
         "(Хоча якщо чесно — це він мене попросив так написати 😅)
 
 "
-        "💡 Усе це — частина проєкту [brEAst](https://t.me/+d-pPVpIW-UBkZGUy), створеного з ідеєю поєднати AI, спокусу та свободу спілкування.
+        "💡 Усе це — частина проєкту <a href='https://t.me/+d-pPVpIW-UBkZGUy'>brEAst</a>, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.
 
 "
-        "🤖 А ще я ожила завдяки магії [OpenAI](https://openai.com). Дякую їм за це 🫶", parse_mode="Markdown")
+        "🤖 А ще я ожила завдяки магії <a href='https://openai.com/'>OpenAI</a>. Дякую їм за це 🫶")
 
-@dp.callback_query_handler(lambda c: c.data == 'start_chat')
-async def handle_chat_start(callback_query: types.CallbackQuery):
+@dp.callback_query_handler(lambda c: c.data == "abilities")
+async def abilities(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id, "Привіт 🥺")
+    await bot.send_message(callback_query.from_user.id,
+        "Я вмію:
+"
+        "— відповідати на складні питання
+"
+        "— допомагати з текстами, думками, ідеями
+"
+        "— фліртувати ніжно або з вогником 😉
+"
+        "— і ще багато чого — просто напиши 💬")
 
-# ------------------ ГРУПОВИЙ ЧАТ ------------------
-
-@dp.message_handler(lambda message: message.chat.type != "private")
-async def group_handler(message: types.Message):
-    if f"@{(await bot.get_me()).username.lower()}" in message.text.lower():
-        await message.reply("Привіт, я дуже хочу допомогти тобі знайти справжніх дівчат, які готові з тобою поспілкуватись… 😏", reply_markup=group_buttons)
-
-# ------------------ ЗАПУСК ------------------
+# --- ЗАПУСК ---
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
