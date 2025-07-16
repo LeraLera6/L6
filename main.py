@@ -1,138 +1,69 @@
 import logging
-import os
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import asyncio
-from datetime import datetime, timedelta
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import (
-    ApplicationBuilder, ContextTypes,
-    MessageHandler, filters, CallbackQueryHandler, CommandHandler
-)
-from openai import AsyncOpenAI
+import os
 
-# Логування
+API_TOKEN = os.getenv("BOT_TOKEN")
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot, storage=MemoryStorage())
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-# Клієнт OpenAI
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# ------------------- КНОПКИ -----------------------
 
-# Telegram токен
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+group_buttons = InlineKeyboardMarkup(row_width=2)
+group_buttons.add(
+    InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+    InlineKeyboardButton("Напиши мені... 😚", url="https://t.me/LeraBot10")
+)
 
-# Автопостинг
-last_post_time = {}
-message_count = {}
-POST_INTERVAL = timedelta(minutes=30)
-POST_MESSAGE = "Ой, я тут 😇 Ти кликав? Хочеш когось особливого? Обери одну з моїх подруг."
-POST_BUTTONS = InlineKeyboardMarkup([
-    [InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421")],
-    [InlineKeyboardButton("❓ Задай мені питання ↗️", url="https://t.me/Lera_v10_bot")]
-])
+private_buttons = InlineKeyboardMarkup(row_width=1)
+private_buttons.add(
+    InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421"),
+    InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy"),
+    InlineKeyboardButton("Я хочу з тобою поспілкуватися, а ти? 😏", callback_data="start_chat"),
+    InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="about_creator")
+)
 
-# Обробка кнопок у ЛС
-async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+# ------------------ ПРИВІТАННЯ В ЛС ------------------
 
-    if query.data == "about":
-        await query.message.reply_text(
-            "Мене звати Лера, мені 22 і я з Одеси 🐚\n"
-            "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉\n\n"
-            "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.\n"
-            "Можеш говорити зі мною про все — я поруч 💋"
-        )
+@dp.message_handler(commands=['start'])
+async def send_welcome(message: types.Message):
+    await message.answer("Ой, я так рада, що ти мені все ж таки написав 💋
+"
+                         "Я тут, щоб допомогти тобі знайти ту дівчину, з якою буде приємно познайомитись.
+"
+                         "Просто напиши мені «Привіт» 😉", reply_markup=private_buttons)
 
-    elif query.data == "creator":
-        await query.message.reply_text(
-            "👨‍🏫 Мій творець — [@nikita_onoff](https://t.me/nikita_onoff)\n"
-            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n"
-            "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
-            "💡 Усе це — частина проєкту [brEAst](https://t.me/+d-pPVpIW-UBkZGUy), створеного з ідеєю поєднати AI, спокусу та свободу спілкування.\n\n"
-            "🤖 А ще я ожила завдяки магії [OpenAI](https://openai.com). Дякую їм за це 🫶",
-            parse_mode="Markdown"
-        )
+@dp.callback_query_handler(lambda c: c.data == 'about_creator')
+async def about_creator(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(callback_query.from_user.id,
+        "👨‍🏫 Мій творець — @nikita_onoff
+"
+        "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
+"
+        "(Хоча якщо чесно — це він мене попросив так написати 😅)
 
-    elif query.data == "girls":
-        await query.message.reply_text(
-            "У мене є подруги, які готові на більше…\n"
-            "💋 Обери свою за настроєм — ось наш список:\n"
-            "👉 https://t.me/virt_chat_ua1/134421"
-        )
+"
+        "💡 Усе це — частина проєкту [brEAst](https://t.me/+d-pPVpIW-UBkZGUy), створеного з ідеєю поєднати AI, спокусу та свободу спілкування.
 
-# Старт у ЛС
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type == "private":
-        await update.message.reply_text(
-            "Пиши мені сюди будь-що — я відповім як твоя AI-подруга 💋\n"
-            "Можеш питати серйозне, грайливе або просто поговорити.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💞 Подружки для спілкування", url="https://t.me/virt_chat_ua1/134421")],
-                [InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy")],
-                [InlineKeyboardButton("👥 Про мене", callback_data="about")],
-                [InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="creator")]
-            ])
-        )
+"
+        "🤖 А ще я ожила завдяки магії [OpenAI](https://openai.com). Дякую їм за це 🫶", parse_mode="Markdown")
 
-# GPT через OpenAI Assistant
-async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type != "private":
-        return
-    try:
-        thread = await openai_client.beta.threads.create()
-        await openai_client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=update.message.text
-        )
-        run = await openai_client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=os.getenv("ASSISTANT_ID")
-        )
-        while True:
-            status = await openai_client.beta.threads.runs.retrieve(
-                thread_id=thread.id,
-                run_id=run.id
-            )
-            if status.status == "completed":
-                break
-            await asyncio.sleep(1)
+@dp.callback_query_handler(lambda c: c.data == 'start_chat')
+async def handle_chat_start(callback_query: types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await bot.send_message(callback_query.from_user.id, "Привіт 🥺")
 
-        messages = await openai_client.beta.threads.messages.list(thread_id=thread.id)
-        for msg in reversed(messages.data):
-            if msg.role == "assistant":
-                await update.message.reply_text(msg.content[0].text.value)
-                break
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Помилка: {e}")
+# ------------------ ГРУПОВИЙ ЧАТ ------------------
 
-# Група — автопостинг
-async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    now = datetime.now()
+@dp.message_handler(lambda message: message.chat.type != "private")
+async def group_handler(message: types.Message):
+    if f"@{(await bot.get_me()).username.lower()}" in message.text.lower():
+        await message.reply("Привіт, я дуже хочу допомогти тобі знайти справжніх дівчат, які готові з тобою поспілкуватись… 😏", reply_markup=group_buttons)
 
-    if chat_id not in last_post_time:
-        last_post_time[chat_id] = now
-        message_count[chat_id] = 0
-
-    message_count[chat_id] += 1
-
-    if (now - last_post_time[chat_id]) >= POST_INTERVAL or message_count[chat_id] >= 5:
-        last_post_time[chat_id] = now
-        message_count[chat_id] = 0
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=POST_MESSAGE,
-            reply_markup=POST_BUTTONS
-        )
-
-# Запуск
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(handle_buttons))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
-    app.run_polling()
-
+# ------------------ ЗАПУСК ------------------
 if __name__ == '__main__':
-    main()
+    executor.start_polling(dp, skip_updates=True)
