@@ -73,9 +73,20 @@ last_bot_message_id = {}
 
 
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    KNOWN_BUTTONS = [
+        "📩 Напиши мені в ЛС... 🧪💞",
+        "🔞 Мій канал передпоказу 🧪💞",
+        "👩‍🦰 Про мене... 🫦",
+        "👨‍🏫 Про творця 🦾"
+    ]
+
     user_id = update.effective_user.id
     text = update.message.text.strip()
     chat_id = update.effective_chat.id
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
+    except:
+        pass
 
     # Ініціалізація списків, якщо вперше
     if user_id not in bot_message_history:
@@ -120,6 +131,9 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "🔞 Мій канал передпоказу 🧪💞":
         msg = await update.message.reply_text("👉 https://t.me/+rKgDRzE3wLoyYTQy")
         bot_message_history[user_id].append(msg.message_id)
+        return
+
+        if text in KNOWN_BUTTONS:
         return
 
     # Інакше — AI
