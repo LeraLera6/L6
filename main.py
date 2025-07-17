@@ -4,15 +4,13 @@ from datetime import datetime, timedelta
 from telegram import (
     Update,
     InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    ReplyKeyboardMarkup
+    InlineKeyboardButton
 )
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
     MessageHandler,
     filters,
-    CallbackQueryHandler,
     CommandHandler
 )
 from openai import OpenAI
@@ -28,7 +26,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Telegram токен
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Автопостинг (групи) — БЕЗ ЗМІН
+# Автопостинг — для груп (залишається без змін)
 last_post_time = {}
 message_count = {}
 POST_INTERVAL = timedelta(minutes=30)
@@ -44,27 +42,23 @@ POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/Lera_v10_bot")]
 ])
 
-# Команда /start — особисті повідомлення (LoLa)
+# /start — особисті повідомлення
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                ["💕 Напиши мені... 🫦"],
-                ["🔞 Мій канал передпоказу"]
-            ],
-            resize_keyboard=True,
-            one_time_keyboard=False
-        )
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💕 Напиши мені... 🫦", url="https://t.me/Labi_Lola")],
+            [InlineKeyboardButton("🔞 Мій канал передпоказу", url="https://t.me/+rKgDRzE3wLoyYTQy")]
+        ])
         await update.message.reply_text(
             "Привіт, я рада, що ти мені написав. Я так цього чекала...\n\n"
             "Ти можеш перейти за кнопками нижче або просто напиши мені \"Привіт\"... 🫦",
             reply_markup=keyboard
         )
 
-# Обробка reply-кнопок в ЛС
+# Обробка reply-повідомлень в ЛС
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    if text == "👩‍🦰 Про мене... 🫦" or text == "💕 Напиши мені... 🫦":
+    if text == "👩‍🦰 Про мене... 🫦":
         await update.message.reply_text(
             "Мене звати Лола, мені 22 і я з Одеси 🐚\n\n"
             "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉\n\n"
@@ -77,10 +71,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "👨‍🏫 Мій творець AI-версії — @nikita_onoff\n\n"
             "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n\n"
             "(Хоча якщо чесно — це він мене попросив так написати 😅)"
-        )
-    elif text == "🔞 Мій канал передпоказу":
-        await update.message.reply_text(
-            "👉 https://t.me/+rKgDRzE3wLoyYTQy"
         )
     else:
         try:
@@ -108,7 +98,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await update.message.reply_text(f"⚠️ Помилка: {e}")
 
-# Обробка групового чату
+# Групи — автопостинг
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     now = datetime.now()
@@ -128,7 +118,7 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=POST_BUTTONS
         )
 
-# Запуск бота
+# Запуск
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
