@@ -74,7 +74,7 @@ last_bot_message_id = {}
 
 
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            # Видаляємо всі попередні повідомлення бота, крім стартового
+# Видаляємо всі попередні повідомлення бота, крім стартового
         async for msg in context.bot.get_chat_history(update.effective_chat.id, limit=100):
             if msg.from_user.id == context.bot.id and msg.message_id != update.message.message_id:
                 try:
