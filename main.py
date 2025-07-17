@@ -74,7 +74,14 @@ last_bot_message_id = {}
 
 
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    KNOWN_BUTTONS = [
+            # Видаляємо всі попередні повідомлення бота, крім стартового
+        async for msg in context.bot.get_chat_history(update.effective_chat.id, limit=100):
+            if msg.from_user.id == context.bot.id and msg.message_id != update.message.message_id:
+                try:
+                    await context.bot.delete_message(update.effective_chat.id, msg.message_id)
+                except:
+                    pass
+KNOWN_BUTTONS = [
         "📩 Напиши мені в ЛС... 🧪💞",
         "🔞 Мій канал передпоказу 🧪💞",
         "👩‍🦰 Про мене... 🫦",
@@ -99,11 +106,10 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
         for msg_id in bot_message_history[user_id]:
-            if msg_id not in ai_message_ids[user_id]:
-        try:
-            await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
-        except:
-            pass
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+            except:
+                pass
         bot_message_history[user_id] = []
 
         if text == "👩‍🦰 Про мене... 🫦":
@@ -116,7 +122,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         elif text == "👨‍🏫 Про творця 🦾":
             msg = await context.bot.send_message(chat_id,
-                "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff"
+                "👨‍🏫 🦾 Мій творець AI-версії — <a href="https://t.me/nikita_onoff">@nikita_onoff</a>"
                 "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉"
                 "(Хоча якщо чесно — це він мене попросив так написати 😅)"
             )
