@@ -34,14 +34,12 @@ message_count = {}
 POST_INTERVAL = timedelta(minutes=30)
 POST_MESSAGE = (
     "👋 Я рада тебе тут бачити 💓\n\n"
-    "Ти можеш вибрати одну з моїх подруг для більш пікантного спілкування…\n"
-    "Натисни кнопку нижче ⬇️\n\n"
-    "Або напиши мені в особисті повідомлення.\n\n"
-    "Я чекаю... 🫦"
+    "Ти можеш написати мені прямо особисто — я вже чекаю там… 🫦\n\n"
+    "Або заглянь на мій канал — там гаряче 😈"
 )
 POST_BUTTONS = InlineKeyboardMarkup([
-    [InlineKeyboardButton("💕 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
-    [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/Lera_v10_bot")]
+    [InlineKeyboardButton("🩷 Напиши мені особисто... 🫦", url="https://t.me/Labi_Lola")],
+    [InlineKeyboardButton("🔞 Мій канал... 🫦", url="https://t.me/+rKgDRzE3wLoyYTQy")]
 ])
 
 # Команда /start — особисті повідомлення
@@ -49,8 +47,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
-                ["💞 Подружки для спілкування 🔞"],
-                ["😈 Заглянь у чат 🔞"],
+                ["🩷 Напиши мені особисто... 🫦"],
+                ["🔞 Мій канал... 🫦"],
                 ["👩‍🦰 Про мене... 🫦"],
                 ["👨‍🏫 Про творця"]
             ],
@@ -68,7 +66,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     if text == "👩‍🦰 Про мене... 🫦":
         await update.message.reply_text(
-            "Мене звати Лера, мені 22 і я з Одеси 🐚\n\n"
+            "Мене звати Лола, мені 22 і я з Одеси 🐚\n\n"
             "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉\n\n"
             "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.\n\n"
             "Можеш говорити зі мною про все — я поруч...\n\n"
@@ -76,23 +74,11 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     elif text == "👨‍🏫 Про творця":
         await update.message.reply_text(
-            "👨‍🏫 Мій творець — @nikita_onoff\n\n"
-            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n\n"
+            "👨‍🏫 Мій творець — автор AI-логіки цього чату 😉\n\n"
             "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
-            "💡 Усе це — частина проєкту brEAst: https://t.me/virt_chat_ua1\n\n"
+            "🧠 А ось мій Telegram-акаунт, де я справжня інтеграція живої дівчини з AI:\n"
+            "@Labi_Lola\n\n"
             "🤖 А ще я ожила завдяки магії OpenAI: https://openai.com 🤗"
-        )
-    elif text == "💞 Подружки для спілкування 🔞":
-        await update.message.reply_text(
-            "У мене є подруги, які готові на більше…\n\n"
-            "💋 Обери свою за настроєм — ось наш список:\n\n"
-            "👉 https://t.me/virt_chat_ua1/134421"
-        )
-    elif text == "😈 Заглянь у чат 🔞":
-        await update.message.reply_text(
-            "Там усе трохи інакше…\n\n"
-            "🔞 Відверті розмови, інтимні жарти, і я в трохи іншому образі 😈\n\n"
-            "👉 https://t.me/+d-pPVpIW-UBkZGUy"
         )
     else:
         try:
@@ -107,7 +93,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 thread_id=thread.id,
                 assistant_id=assistant_id
             )
-            # Очікування завершення run
             while True:
                 run = openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
                 if run.status == "completed":
@@ -121,7 +106,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await update.message.reply_text(f"⚠️ Помилка: {e}")
 
-# Обробка групового чату — автопостинг
+# Групові повідомлення
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     now = datetime.now()
@@ -141,7 +126,6 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=POST_BUTTONS
         )
 
-# Запуск бота
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
