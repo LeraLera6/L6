@@ -1,6 +1,5 @@
 import logging
 import os
-import asyncio
 from datetime import datetime, timedelta
 from telegram import (
     Update,
@@ -16,15 +15,15 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler
 )
-from openai import AsyncOpenAI
+from openai import OpenAI
+import asyncio
 
 # Логування
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # OpenAI
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-assistant_id = os.getenv("ASSISTANT_ID")
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Telegram токен
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -37,11 +36,11 @@ POST_MESSAGE = (
     "Привіт, я рада тебе тут бачити.\n\n"
     "Ти можеш вибрати одну з моїх подруг для більш пікантного спілкування.\n\n"
     "Або напиши мені в особисті повідомлення.\n\n"
-    "Я чекаю... 🫦"
+    "Я чекаю... 🪦"
 )
 POST_BUTTONS = InlineKeyboardMarkup([
-    [InlineKeyboardButton("💞 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
-    [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/Lera_v10_bot")]
+    [InlineKeyboardButton("💕 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
+    [InlineKeyboardButton("Напиши мені... 🪦", url="https://t.me/Lera_v10_bot")]
 ])
 
 # Команда /start — особисті повідомлення
@@ -66,7 +65,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Обробка reply-кнопок в ЛС
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-
     if text == "👩‍🦰 Про мене... 🫦":
         await update.message.reply_text(
             "Мене звати Лера, мені 22 і я з Одеси 🐚\n\n"
@@ -97,38 +95,30 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         try:
-            # Створюємо thread
-            thread = await openai_client.beta.threads.create()
-            # Запускаємо run
-            run = await openai_client.beta.threads.runs.create(
-                thread_id=thread.id,
-                assistant_id=assistant_id,
-                instructions="Відповідай як фліртова AI-дівчина Лера."
-            )
-            # Додаємо повідомлення від користувача
-            await openai_client.beta.threads.messages.create(
+            assistant_id = os.getenv("ASSISTANT_ID")
+            thread = openai_client.beta.threads.create()
+            openai_client.beta.threads.messages.create(
                 thread_id=thread.id,
                 role="user",
-                content=text
+                content=update.message.text
             )
-
-            # Чекаємо завершення run
+            run = openai_client.beta.threads.runs.create(
+                thread_id=thread.id,
+                assistant_id=assistant_id
+            )
+            # Очікування завершення run
             while True:
-                run_status = await openai_client.beta.threads.runs.retrieve(
-                    thread_id=thread.id,
-                    run_id=run.id
-                )
-                if run_status.status == "completed":
+                run = openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+                if run.status == "completed":
                     break
                 await asyncio.sleep(1)
 
-            # Отримуємо відповідь
-            messages = await openai_client.beta.threads.messages.list(thread_id=thread.id)
-            ai_reply = messages.data[0].content[0].text.value
-            await update.message.reply_text(ai_reply)
+            messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
+            reply = messages.data[0].content[0].text.value
+            await update.message.reply_text(reply)
 
         except Exception as e:
-            await update.message.reply_text(f"⚠️ Помилка AI: {e}")
+            await update.message.reply_text(f"⚠️ Помилка: {e}")
 
 # Обробка групового чату — автопостинг
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
