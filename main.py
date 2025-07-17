@@ -33,11 +33,18 @@ last_post_time = {}
 message_count = {}
 POST_INTERVAL = timedelta(minutes=30)
 POST_MESSAGE = (
-    "Привіт 👋 Я рада тебе тут бачити 😊\n\n"
-    "Ти можеш вибрати одну з моїх подруг для більш пікантного спілкування…\n"
-    "Натисни кнопку нижче 🖤\n\n"
-    "Або напиши мені в особисті повідомлення.\n\n"
-    "Я чекаю... 🫦"
+    "<b>👋 Я рада тебе тут бачити…</b>
+
+"
+    "<b>Ти можеш вибрати одну з моїх подруг для більш пікантного спілкування…</b>
+"
+    "<b>Натисни кнопку нижче 🖤</b>
+
+"
+    "<b>Або напиши мені в особисті повідомлення.</b>
+
+"
+    "<b>Я чекаю... 🫦</b>"
 )
 POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("💕 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
@@ -65,6 +72,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Обробка reply-кнопок в ЛС
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+    except:
+        pass
     text = update.message.text.strip()
     if text == "👩‍🦰 Про мене... 🫦":
         await update.message.reply_text(
@@ -116,7 +127,12 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
             reply = messages.data[0].content[0].text.value
-            await update.message.reply_text(reply)
+                    try:
+            await context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+        except:
+            pass
+
+        await update.message.reply_text(reply)
 
         except Exception as e:
             await update.message.reply_text(f"⚠️ Помилка: {e}")
