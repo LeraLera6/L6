@@ -65,9 +65,92 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Обробка reply-повідомлень в ЛС
 
 # Додай глобальну змінну
+# Змінна для відстеження всіх повідомлень бота, які потрібно чистити (крім AI-діалогу)
+bot_message_history = {}
+ai_message_ids = {}
+
 last_bot_message_id = {}
 
+
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    text = update.message.text.strip()
+    chat_id = update.effective_chat.id
+
+    # Ініціалізація списків, якщо вперше
+    if user_id not in bot_message_history:
+        bot_message_history[user_id] = []
+    if user_id not in ai_message_ids:
+        ai_message_ids[user_id] = []
+
+    # Очистити всі повідомлення, крім AI (перед кожною кнопкою або AI-викликом)
+    for msg_id in bot_message_history[user_id]:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+        except:
+            pass
+    bot_message_history[user_id] = []
+
+    # Якщо натиснута кнопка
+    if text == "👩‍🦰 Про мене... 🫦":
+        msg = await update.message.reply_text(
+            "Мене звати Лола, мені 22 і я з Одеси 🐚"
+            "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉"
+            "Я тут, щоб розслабити тебе не лише фізично, а й емоційно."
+            "Можеш говорити зі мною про все — я поруч..."
+            "Напиши мені \"Привіт\"... 🫦"
+        )
+        bot_message_history[user_id].append(msg.message_id)
+        return
+
+    elif text == "👨‍🏫 Про творця 🦾":
+        msg = await update.message.reply_text(
+            "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff"
+            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉"
+            "(Хоча якщо чесно — це він мене попросив так написати 😅)"
+        )
+        bot_message_history[user_id].append(msg.message_id)
+        return
+
+    elif text == "📩 Напиши мені в ЛС... 🧪💞":
+        msg = await update.message.reply_text("👉 https://t.me/Labi_Lola")
+        bot_message_history[user_id].append(msg.message_id)
+        return
+
+    elif text == "🔞 Мій канал передпоказу 🧪💞":
+        msg = await update.message.reply_text("👉 https://t.me/+rKgDRzE3wLoyYTQy")
+        bot_message_history[user_id].append(msg.message_id)
+        return
+
+    # Інакше — AI
+    try:
+        assistant_id = os.getenv("ASSISTANT_ID")
+        thread = openai_client.beta.threads.create()
+        openai_client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=text
+        )
+        run = openai_client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant_id
+        )
+        while True:
+            run = openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+            if run.status == "completed":
+                break
+            await asyncio.sleep(1)
+
+        messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
+        reply = messages.data[0].content[0].text.value
+
+        msg = await update.message.reply_text(reply)
+        ai_message_ids[user_id].append(msg.message_id)
+
+    except Exception as e:
+        msg = await update.message.reply_text(f"⚠️ Помилка: {e}")
+        ai_message_ids[user_id].append(msg.message_id)
+
     user_id = update.effective_user.id
     text = update.message.text.strip()
 
