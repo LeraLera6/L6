@@ -91,6 +91,8 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Ініціалізація списків, якщо вперше
     if user_id not in bot_message_history:
         bot_message_history[user_id] = []
+    if text in KNOWN_BUTTONS:
+        return
     if user_id not in ai_message_ids:
         ai_message_ids[user_id] = []
 
@@ -112,7 +114,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Напиши мені \"Привіт\"... 🫦"
         )
         bot_message_history[user_id].append(msg.message_id)
-        return
 
     elif text == "👨‍🏫 Про творця 🦾":
         msg = await update.message.reply_text(
@@ -121,20 +122,15 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "(Хоча якщо чесно — це він мене попросив так написати 😅)"
         )
         bot_message_history[user_id].append(msg.message_id)
-        return
 
     elif text == "📩 Напиши мені в ЛС... 🧪💞":
         msg = await update.message.reply_text("👉 https://t.me/Labi_Lola")
         bot_message_history[user_id].append(msg.message_id)
-        return
 
     elif text == "🔞 Мій канал передпоказу 🧪💞":
         msg = await update.message.reply_text("👉 https://t.me/+rKgDRzE3wLoyYTQy")
         bot_message_history[user_id].append(msg.message_id)
-        return
 
-        if text in KNOWN_BUTTONS:
-        return
 
     # Інакше — AI
     try:
@@ -185,7 +181,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Напиши мені \"Привіт\"... 🫦"
         )
         last_bot_message_id[user_id] = msg.message_id
-        return
 
     elif text == "👨‍🏫 Про творця 🦾":
         msg = await update.message.reply_text(
@@ -194,17 +189,14 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "(Хоча якщо чесно — це він мене попросив так написати 😅)"
         )
         last_bot_message_id[user_id] = msg.message_id
-        return
 
     elif text == "📩 Напиши мені в ЛС... 🧪💞":
         msg = await update.message.reply_text("👉 https://t.me/Labi_Lola")
         last_bot_message_id[user_id] = msg.message_id
-        return
 
     elif text == "🔞 Мій канал передпоказу 🧪💞":
         msg = await update.message.reply_text("👉 https://t.me/+rKgDRzE3wLoyYTQy")
         last_bot_message_id[user_id] = msg.message_id
-        return
 
     # Інакше — спілкування з AI (ручне введення)
     try:
