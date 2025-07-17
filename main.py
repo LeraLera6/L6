@@ -100,10 +100,10 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         for msg_id in bot_message_history[user_id]:
             if msg_id not in ai_message_ids[user_id]:
-            try:
-                await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
-            except:
-                pass
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+        except:
+            pass
         bot_message_history[user_id] = []
 
         if text == "👩‍🦰 Про мене... 🫦":
