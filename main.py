@@ -1,71 +1,85 @@
 import logging
-from aiogram import Bot, Dispatcher, types, executor
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-
-# Токен (бере з ENV на Railway)
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.dispatcher.filters import CommandStart
+import asyncio
 import os
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+# Логирование
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=BOT_TOKEN)
+
+# Токен и инициалицация
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher(bot)
 
-# Кнопки для ЛС (під вікном вводу)
-private_kb = ReplyKeyboardMarkup(resize_keyboard=True)
-private_kb.add(
-    KeyboardButton("💞 Подружки 🔞"),
-    KeyboardButton("🔞 Заглянь у чат 18+"),
-    KeyboardButton("Я хочу з тобою поспілкуватися, а ти? 🫦"),
-    KeyboardButton("🧑‍🏫 Про творця")
-)
+# --- КНОПКИ ДЛЯ ЛИЧКИ (появляются под строкой ввода) ---
 
-# Inline кнопки для групи
-group_inline_kb = InlineKeyboardMarkup(row_width=2)
-group_inline_kb.add(
-    InlineKeyboardButton("💞 Подружки 🔞", url="https://t.me/virt_chat_ua1/134421"),
-    InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/Lera_Bot10")
-)
+def private_keyboard():
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        InlineKeyboardButton("💞 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421"),
+        InlineKeyboardButton("🔞 Заглянь у чат 18+", url="https://t.me/+d-pPVpIW-UBkZGUy"),
+        InlineKeyboardButton("Я хочу з тобою пообщаться, а ти? 🫦", callback_data="chat_start"),
+        InlineKeyboardButton("🧑‍🏫 Про творця", callback_data="creator_info"),
+    )
+    return kb
 
-# Відповідь у ЛС на кнопку з фліртом
-@dp.message_handler(lambda message: message.text == "Я хочу з тобою поспілкуватися, а ти? 🫦")
-async def handle_chat_start(message: types.Message):
-    await message.answer("Привіт 😌")
+# --- Хендлер старт / приватные сообщения ---
+@dp.message_handler(commands=["start"])
+async def start_private(message: types.Message):
+    if message.chat.type == "private":
+        await message.answer(
+            "Привіт 😇 Я — Лера, твоя AI-подруга.
 
-# Відповідь на кнопку "Про творця"
-@dp.message_handler(lambda message: message.text == "🧑‍🏫 Про творця")
-async def handle_creator(message: types.Message):
-    await message.answer(
-        "🧑‍🏫 Мій творець — @nikita_onoff
+Обери кнопку нижче, щоб розпочати 😉",
+            reply_markup=private_keyboard()
+        )
+
+# --- При натисканні "Я хочу з тобою пообщаться, а ти? 🫦" ---
+@dp.callback_query_handler(lambda c: c.data == "chat_start")
+async def start_chat_callback(callback_query: types.CallbackQuery):
+    await bot.send_message(callback_query.from_user.id, "Привіт 😇", disable_notification=True)
+
+# --- При натисканні "Про творця" ---
+@dp.callback_query_handler(lambda c: c.data == "creator_info")
+async def creator_info_callback(callback_query: types.CallbackQuery):
+    await bot.send_message(
+        callback_query.from_user.id,
+        "👨‍🏫 Мій творець — <a href='https://t.me/nikita_onoff'>@nikita_onoff</a>
 "
         "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
 "
         "(Хоча якщо чесно — це він мене попросив так написати 😅)
 
 "
-        "💡 Усе це — частина проєкту "
-        "<a href='https://t.me/+d-pPVpIW-UBkZGUy'>brEAst</a>, створеного з ідеєю поєднати AI, спокусу та свободу спілкування.
+        "💡 Усе це — частина проєкту <a href='https://t.me/+d-pPVpIW-UBkZGUy'>brEAst</a>, "
+        "створеного з ідеєю поєднати AI, спокусу та свободу спілкування.
 
 "
-        "🤖 А ще я ожила завдяки магії <a href='https://openai.com'>OpenAI</a>. Дякую їм за це 🫶",
-        parse_mode="HTML"
+        "🤖 А ще я ожила завдяки магії <a href='https://openai.com'>OpenAI</a>. Дякую їм за це 🫶"
     )
 
-# Відповідь на кнопку "💞 Подружки 🔞" або "🔞 Заглянь у чат 18+" — не потрібна, бо це просто гіперпосилання
+# --- ГРУППОВАЯ ЛОГИКА ---
 
-# Автовідповідь в групі (при згадці або автопост)
+def group_keyboard():
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        InlineKeyboardButton("💞 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421"),
+        InlineKeyboardButton("Задай мені питання… 🫦", url="https://t.me/Lera_Bot_10")
+    )
+    return kb
+
 @dp.message_handler(lambda message: message.chat.type in ["group", "supergroup"])
-async def group_reply(message: types.Message):
-    if (
-        message.text and (
-            "@Lera_Bot10" in message.text.lower()
-            or message.reply_to_message and message.reply_to_message.from_user.username == "Lera_Bot10"
-            or message.text.lower() in ["привіт", "хто тут?", "є хтось?", "напишіть мені"]
-        )
-    ):
+async def group_handler(message: types.Message):
+    text = message.text.lower()
+
+    if "привіт" in text or "хто тут" in text or "є хтось" in text or "напишіть мені" in text:
         await message.reply(
-            "Привіт, я дуже хочу допомогти тобі знайти справжніх дівчат, які готові з тобою поспілкуватися... 🫦",
-            reply_markup=group_inline_kb
+            "Ой, я тут 😇 Ти кликав? Дуже хочу допомогти тобі знайти дівчат… 🫦",
+            reply_markup=group_keyboard()
         )
 
-if __name__ == '__main__':
+# --- RUN ---
+if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
