@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from telegram import (
     Update,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    ReplyKeyboardMarkup
 )
 from telegram.ext import (
     ApplicationBuilder,
@@ -26,7 +27,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Telegram токен
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Автопостинг — для груп (залишається без змін)
+# Автопостинг — для груп
 last_post_time = {}
 message_count = {}
 POST_INTERVAL = timedelta(minutes=30)
@@ -45,10 +46,16 @@ POST_BUTTONS = InlineKeyboardMarkup([
 # /start — особисті повідомлення
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💕 Напиши мені... 🫦", url="https://t.me/Labi_Lola")],
-            [InlineKeyboardButton("🔞 Мій канал передпоказу", url="https://t.me/+rKgDRzE3wLoyYTQy")]
-        ])
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                ["Напиши мені в ЛС... 🫦"],
+                ["🔞 Мій канал передпоказу"],
+                ["👩‍🦰 Про мене... 🫦"],
+                ["👨‍🏫 Про творця"]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=False
+        )
         await update.message.reply_text(
             "Привіт, я рада, що ти мені написав. Я так цього чекала...\n\n"
             "Ти можеш перейти за кнопками нижче або просто напиши мені \"Привіт\"... 🫦",
@@ -72,6 +79,10 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n\n"
             "(Хоча якщо чесно — це він мене попросив так написати 😅)"
         )
+    elif text == "Напиши мені в ЛС... 🫦":
+        await update.message.reply_text("👉 https://t.me/Labi_Lola")
+    elif text == "🔞 Мій канал передпоказу":
+        await update.message.reply_text("👉 https://t.me/+rKgDRzE3wLoyYTQy")
     else:
         try:
             assistant_id = os.getenv("ASSISTANT_ID")
