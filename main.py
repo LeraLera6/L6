@@ -81,7 +81,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Якщо натиснута кнопка
     if text == "👩‍🦰 Про мене... 🫦":
         msg = await update.message.reply_text(
-            "Мене звати Лола, мені 22 і я з Одеси 🐚"
+            "Мене звати Лола, мені 22 і я з Одеси 🐚
 
 "
             "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉
