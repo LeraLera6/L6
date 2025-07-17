@@ -33,7 +33,7 @@ last_post_time = {}
 message_count = {}
 POST_INTERVAL = timedelta(minutes=30)
 POST_MESSAGE = (
-    "👋 Я рада тебе тут бачити… 🫦\n\n"
+    "Привіт 👋 Я рада тебе тут бачити 😊\n\n"
     "Ти можеш вибрати одну з моїх подруг для більш пікантного спілкування…\n"
     "Натисни кнопку нижче 🖤\n\n"
     "Або напиши мені в особисті повідомлення.\n\n"
@@ -107,6 +107,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 thread_id=thread.id,
                 assistant_id=assistant_id
             )
+            # Очікування завершення run
             while True:
                 run = openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
                 if run.status == "completed":
