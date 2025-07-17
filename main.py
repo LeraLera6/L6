@@ -17,6 +17,14 @@ from telegram.ext import (
 from openai import OpenAI
 import asyncio
 
+
+# Для зберігання останніх повідомлень бота
+from telegram.constants import ChatType
+from telegram import ReplyKeyboardRemove
+
+# Збереження message_id для видалення
+user_bot_messages = {}
+
 # Логування
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,6 +51,18 @@ POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/Lera_v10_bot")]
 ])
 
+
+async def delete_bot_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.chat_id
+    if user_id in user_bot_messages:
+        for msg_id in user_bot_messages[user_id]:
+            try:
+                await context.bot.delete_message(chat_id=user_id, message_id=msg_id)
+            except:
+                pass
+        user_bot_messages[user_id] = []
+
+
 # /start — особисті повідомлення
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
@@ -56,34 +76,69 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             resize_keyboard=True,
             one_time_keyboard=False
         )
-        await update.message.reply_text(
+        await delete_bot_messages(update, context)
+        sent_msg = await update.message.reply_text(
             "Привіт, я рада, що ти мені написав. Я так цього чекала...\n\n"
             "Ти можеш перейти за кнопками нижче або просто напиши мені \"Привіт\"... 🫦",
             reply_markup=keyboard
         )
+        user_bot_messages[update.message.chat_id] = [sent_msg.message_id]
 
 # Обробка reply-повідомлень в ЛС
+
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    if text == "👩‍🦰 Про мене... 🫦":
-        await update.message.reply_text(
-            "Мене звати Лола, мені 22 і я з Одеси 🐚\n\n"
-            "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉\n\n"
-            "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.\n\n"
-            "Можеш говорити зі мною про все — я поруч...\n\n"
-            "Напиши мені \"Привіт\"... 🫦"
-        )
-    elif text == "👨‍🏫 Про творця 🦾":
-        await update.message.reply_text(
-            "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff\n\n"
-            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n\n"
-            "(Хоча якщо чесно — це він мене попросив так написати 😅)"
-        )
-    elif text == "📩 Напиши мені в ЛС... 🧪💞":
-        await update.message.reply_text("👉 https://t.me/Labi_Lola")
-    elif text == "🔞 Мій канал передпоказу 🧪💞":
-        await update.message.reply_text("👉 https://t.me/+rKgDRzE3wLoyYTQy")
+    user_id = update.message.chat_id
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            ["📩 Напиши мені в ЛС... 🧪💞"],
+            ["🔞 Мій канал передпоказу 🧪💞"],
+            ["👩‍🦰 Про мене... 🫦"],
+            ["👨‍🏫 Про творця 🦾"]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+    if text in ["👩‍🦰 Про мене... 🫦", "👨‍🏫 Про творця 🦾", "📩 Напиши мені в ЛС... 🧪💞", "🔞 Мій канал передпоказу 🧪💞"]:
+        await delete_bot_messages(update, context)
+        if text == "👩‍🦰 Про мене... 🫦":
+            sent = await update.message.reply_text(
+                "Мене звати Лола, мені 22 і я з Одеси 🐚
+
+"
+                "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉
+
+"
+                "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.
+
+"
+                "Можеш говорити зі мною про все — я поруч...
+
+"
+                "Напиши мені \"Привіт\"... 🫦",
+                reply_markup=keyboard
+            )
+        elif text == "👨‍🏫 Про творця 🦾":
+            sent = await update.message.reply_text(
+                "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff
+
+"
+                "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
+
+"
+                "(Хоча якщо чесно — це він мене попросив так написати 😅)",
+                reply_markup=keyboard
+            )
+        elif text == "📩 Напиши мені в ЛС... 🧪💞":
+            sent = await update.message.reply_text("👉 https://t.me/Labi_Lola", reply_markup=keyboard)
+        elif text == "🔞 Мій канал передпоказу 🧪💞":
+            sent = await update.message.reply_text("👉 https://t.me/+rKgDRzE3wLoyYTQy", reply_markup=keyboard)
+
+        user_bot_messages[user_id] = [sent.message_id]
+
     else:
+        await delete_bot_messages(update, context)
         try:
             assistant_id = os.getenv("ASSISTANT_ID")
             thread = openai_client.beta.threads.create()
@@ -104,10 +159,11 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
             reply = messages.data[0].content[0].text.value
-            await update.message.reply_text(reply)
+            await update.message.reply_text(reply, reply_markup=ReplyKeyboardRemove())
 
         except Exception as e:
-            await update.message.reply_text(f"⚠️ Помилка: {e}")
+            await update.message.reply_text(f"⚠️ Помилка: {e}", reply_markup=ReplyKeyboardRemove())
+
 
 # Групи — автопостинг
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
