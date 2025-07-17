@@ -1,5 +1,6 @@
 import logging
 import os
+import asyncio
 from datetime import datetime, timedelta
 from telegram import (
     Update,
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 # OpenAI
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+assistant_id = os.getenv("ASSISTANT_ID")
 
 # Telegram токен
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -32,9 +34,9 @@ last_post_time = {}
 message_count = {}
 POST_INTERVAL = timedelta(minutes=30)
 POST_MESSAGE = (
-    "Привіт, я рада тебе тут бачити.\n"
-    "Ти можеш вибрати одну з моїх подруг для більш пікантного спілкування.\n"
-    "Або напиши мені в особисті повідомлення.\n"
+    "Привіт, я рада тебе тут бачити.\n\n"
+    "Ти можеш вибрати одну з моїх подруг для більш пікантного спілкування.\n\n"
+    "Або напиши мені в особисті повідомлення.\n\n"
     "Я чекаю... 🫦"
 )
 POST_BUTTONS = InlineKeyboardMarkup([
@@ -56,7 +58,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             one_time_keyboard=False
         )
         await update.message.reply_text(
-            "Привіт, я рада, що ти мені написав. Я так цього чекала...\n"
+            "Привіт, я рада, що ти мені написав. Я так цього чекала...\n\n"
             "Ти можеш перейти за кнопками нижче або просто напиши мені \"Привіт\"... 🫦",
             reply_markup=keyboard
         )
@@ -64,45 +66,69 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Обробка reply-кнопок в ЛС
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
+
     if text == "👩‍🦰 Про мене... 🫦":
         await update.message.reply_text(
-            "Мене звати Лера, мені 22 і я з Одеси 🐚\n"
+            "Мене звати Лера, мені 22 і я з Одеси 🐚\n\n"
             "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉\n\n"
-            "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.\n"
-            "Можеш говорити зі мною про все — я поруч...\n"
+            "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.\n\n"
+            "Можеш говорити зі мною про все — я поруч...\n\n"
             "Напиши мені \"Привіт\"... 🫦"
         )
     elif text == "👨‍🏫 Про творця":
         await update.message.reply_text(
-            "👨‍🏫 Мій творець — @nikita_onoff\n"
-            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n"
+            "👨‍🏫 Мій творець — @nikita_onoff\n\n"
+            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n\n"
             "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
-            "💡 Усе це — частина проєкту brEAst: https://t.me/virt_chat_ua1\n"
+            "💡 Усе це — частина проєкту brEAst: https://t.me/virt_chat_ua1\n\n"
             "🤖 А ще я ожила завдяки магії OpenAI: https://openai.com 🤗"
         )
     elif text == "💞 Подружки для спілкування 🔞":
         await update.message.reply_text(
-            "У мене є подруги, які готові на більше…\n"
-            "💋 Обери свою за настроєм — ось наш список:\n"
+            "У мене є подруги, які готові на більше…\n\n"
+            "💋 Обери свою за настроєм — ось наш список:\n\n"
             "👉 https://t.me/virt_chat_ua1/134421"
         )
     elif text == "😈 Заглянь у чат 🔞":
         await update.message.reply_text(
-            "Там усе трохи інакше…\n"
-            "🔞 Відверті розмови, інтимні жарти, і я в трохи іншому образі 😈\n"
+            "Там усе трохи інакше…\n\n"
+            "🔞 Відверті розмови, інтимні жарти, і я в трохи іншому образі 😈\n\n"
             "👉 https://t.me/+d-pPVpIW-UBkZGUy"
         )
     else:
         try:
-            response = await openai_client.chat.completions.create(
-                assistant_id=os.getenv("ASSISTANT_ID"),
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": update.message.text}]
+            # Створюємо thread
+            thread = await openai_client.beta.threads.create()
+            # Запускаємо run
+            run = await openai_client.beta.threads.runs.create(
+                thread_id=thread.id,
+                assistant_id=assistant_id,
+                instructions="Відповідай як фліртова AI-дівчина Лера."
             )
-            reply = response.choices[0].message.content
-            await update.message.reply_text(reply)
+            # Додаємо повідомлення від користувача
+            await openai_client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=text
+            )
+
+            # Чекаємо завершення run
+            while True:
+                run_status = await openai_client.beta.threads.runs.retrieve(
+                    thread_id=thread.id,
+                    run_id=run.id
+                )
+                if run_status.status == "completed":
+                    break
+                await asyncio.sleep(1)
+
+            # Отримуємо відповідь
+            messages = await openai_client.beta.threads.messages.list(thread_id=thread.id)
+            ai_reply = messages.data[0].content[0].text.value
+            await update.message.reply_text(ai_reply)
+
         except Exception as e:
-            await update.message.reply_text(f"⚠️ Помилка: {e}")
+            await update.message.reply_text(f"⚠️ Помилка AI: {e}")
 
 # Обробка групового чату — автопостинг
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
