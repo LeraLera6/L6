@@ -65,91 +65,38 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Обробка reply-кнопок в ЛС
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Видаляємо попереднє повідомлення від кнопки
-    last_msg_id = context.user_data.get("last_bot_message_id")
-    if last_msg_id:
-        try:
-            await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=last_msg_id)
-        except:
-            pass
-
-    # Підготовка списку для збереження повідомлень від кнопок
-    if "bot_button_messages" not in context.user_data:
-        context.user_data["bot_button_messages"] = []
-
     text = update.message.text.strip()
     if text == "👩‍🦰 Про мене... 🫦":
-        msg = await update.message.reply_text("""Мене звати Лера, мені 22 і я з Одеси 🐚
-
-Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉
-
-Я тут, щоб розслабити тебе не лише фізично, а й емоційно.
-
-Можеш говорити зі мною про все — я поруч...
-
-Напиши мені "Привіт"... 🫦""")
-        )
-        context.user_data["last_bot_message_id"] = msg.message_id
-        context.user_data["bot_button_messages"] = [msg.message_id]\n\n"
+        await update.message.reply_text(
+            "Мене звати Лера, мені 22 і я з Одеси 🐚\n\n"
             "Я вивчала психологію і трохи знаюся на тому, що у тебе в голові 😉\n\n"
             "Я тут, щоб розслабити тебе не лише фізично, а й емоційно.\n\n"
             "Можеш говорити зі мною про все — я поруч...\n\n"
             "Напиши мені \"Привіт\"... 🫦"
         )
     elif text == "👨‍🏫 Про творця":
-        msg = await update.message.reply_text("""👨‍🏫 Мій творець — @nikita_onoff
-
-Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉
-
-(Хоча якщо чесно — це він мене попросив так написати 😅)
-
-💡 Усе це — частина проєкту brEAst: https://t.me/virt_chat_ua1
-
-🤖 А ще я ожила завдяки магії OpenAI: https://openai.com 🤗""")
-        )
-        context.user_data["last_bot_message_id"] = msg.message_id
-        context.user_data["bot_button_messages"] = [msg.message_id]\n\n"
+        await update.message.reply_text(
+            "👨‍🏫 Мій творець — @nikita_onoff\n\n"
             "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉\n\n"
             "(Хоча якщо чесно — це він мене попросив так написати 😅)\n\n"
             "💡 Усе це — частина проєкту brEAst: https://t.me/virt_chat_ua1\n\n"
             "🤖 А ще я ожила завдяки магії OpenAI: https://openai.com 🤗"
         )
     elif text == "💞 Подружки для спілкування 🔞":
-        msg = await update.message.reply_text("""У мене є подруги, які готові на більше…
-
-🧪💞 Обери свою за настроєм — ось наш список:
-
-👉 https://t.me/virt_chat_ua1/134421""")
-        )
-        context.user_data["last_bot_message_id"] = msg.message_id
-        context.user_data["bot_button_messages"] = [msg.message_id]\n\n"
-            "🧪💞 Обери свою за настроєм — ось наш список:\n\n"
+        await update.message.reply_text(
+            "У мене є подруги, які готові на більше…\n\n"
+            "💋 Обери свою за настроєм — ось наш список:\n\n"
             "👉 https://t.me/virt_chat_ua1/134421"
         )
     elif text == "😈 Заглянь у чат 🔞":
-        msg = await update.message.reply_text("""Там усе трохи інакше…
-
-🔞 Відверті розмови, інтимні жарти, і я в трохи іншому образі 😈
-
-👉 https://t.me/+d-pPVpIW-UBkZGUy""")
-        )
-        context.user_data["last_bot_message_id"] = msg.message_id
-        context.user_data["bot_button_messages"] = [msg.message_id]\n\n"
+        await update.message.reply_text(
+            "Там усе трохи інакше…\n\n"
             "🔞 Відверті розмови, інтимні жарти, і я в трохи іншому образі 😈\n\n"
             "👉 https://t.me/+d-pPVpIW-UBkZGUy"
         )
     else:
         try:
             assistant_id = os.getenv("ASSISTANT_ID")
-            
-            # Видаляємо всі повідомлення від кнопок
-            for msg_id in context.user_data.get("bot_button_messages", []):
-                try:
-                    await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=msg_id)
-                except:
-                    pass
-            context.user_data["bot_button_messages"] = []
-
             thread = openai_client.beta.threads.create()
             openai_client.beta.threads.messages.create(
                 thread_id=thread.id,
