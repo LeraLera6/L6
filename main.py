@@ -192,3 +192,24 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+# ⏱ AI Memory: обмеження — 11 діалогових пар або 12 хвилин
+user_history = user_histories.get(user_id, [])
+cutoff_time = datetime.now() - timedelta(minutes=12)
+filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
+filtered_history = filtered_history[-11:]
+
+# Перетворюємо на формат для GPT Assistant
+for user_msg, bot_reply, _ in filtered_history:
+    openai_client.beta.threads.messages.create(
+        thread_id=thread.id,
+        role="user",
+        content=user_msg,
+    )
+    openai_client.beta.threads.messages.create(
+        thread_id=thread.id,
+        role="assistant",
+        content=bot_reply,
+    )
