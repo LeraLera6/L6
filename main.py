@@ -1,3 +1,4 @@
+
 # --- START: AI Thread Memory Management ---
 user_threads = {}
 last_active = {}
@@ -134,7 +135,23 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot_message_history[user_id].append(msg.message_id)
         return
 
-    # Якщо ручний ввід — не видаляємо, обробка AI
+    
+# --- START: USER NAME MEMORY LOGIC ---
+user_names = {}
+
+def extract_name_from_text(text):
+    possible_starters = ["мене звати", "я", "звати", "я —", "я -", "моє ім’я", "моё имя", "меня зовут"]
+    for starter in possible_starters:
+        if starter in text.lower():
+            parts = text.split()
+            for i, word in enumerate(parts):
+                if starter in word.lower() and i + 1 < len(parts):
+                    return parts[i + 1].capitalize()
+    return None
+# --- END: USER NAME MEMORY LOGIC ---
+
+
+# Якщо ручний ввід — не видаляємо, обробка AI
     try:
         assistant_id = os.getenv("ASSISTANT_ID")
         thread = openai_client.beta.threads.create()
@@ -143,7 +160,38 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             role="user",
             content=text
         )
-        run = openai_client.beta.threads.runs.create(
+        
+    # Перевірка імені
+    if user_id not in user_names:
+        extracted_name = extract_name_from_text(text)
+        if extracted_name:
+            user_names[user_id] = extracted_name
+            greeting = f"Мені приємно познайомитись, {extracted_name} 🫦\n"
+        else:
+            greeting = ""
+    else:
+        greeting = ""
+
+    # Підготовка історії для контексту
+    user_history = user_histories.get(user_id, [])
+    cutoff_time = datetime.now() - timedelta(minutes=12)
+    filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
+    filtered_history = filtered_history[-11:]
+
+    for user_msg, bot_reply, _ in filtered_history:
+        openai_client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=user_msg,
+        )
+        openai_client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="assistant",
+            content=bot_reply,
+        )
+
+
+    run = openai_client.beta.threads.runs.create(
             thread_id=thread.id,
             assistant_id=assistant_id
         )
@@ -217,4 +265,4 @@ for user_msg, bot_reply, _ in filtered_history:
         thread_id=thread.id,
         role="assistant",
         content=bot_reply,
-        )
+    )
