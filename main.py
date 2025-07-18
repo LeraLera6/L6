@@ -1,7 +1,3 @@
-# --- START: AI Thread Memory Management ---
-user_threads = {}
-last_active = {}
-# --- END: AI Thread Memory Management ---
 import logging
 import os
 from datetime import datetime, timedelta
@@ -20,6 +16,12 @@ from telegram.ext import (
 )
 from openai import OpenAI
 import asyncio
+
+# --- START: AI Thread Memory Management ---
+user_threads = {}
+last_active = {}
+# --- END: AI Thread Memory Management ---
+
 user_histories = {}  # Store user message history
 
 # Логування
@@ -68,16 +70,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
 
-# Обробка reply-повідомлень в ЛС
-
-# Додай глобальну змінну
-# Змінна для відстеження всіх повідомлень бота, які потрібно чистити (крім AI-діалогу)
 bot_message_history = {}
 ai_message_ids = {}
-
 last_bot_message_id = {}
-
-
 
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     KNOWN_BUTTONS = [
@@ -91,13 +86,11 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     chat_id = update.effective_chat.id
 
-    # Ініціалізація списків, якщо вперше
     if user_id not in bot_message_history:
         bot_message_history[user_id] = []
     if user_id not in ai_message_ids:
         ai_message_ids[user_id] = []
 
-    # Якщо натиснута кнопка
     if text in KNOWN_BUTTONS:
         try:
             await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
@@ -112,13 +105,13 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot_message_history[user_id] = []
 
         if text == "👩‍🦰 Про мене... 🫦":
-            msg = await context.bot.send_message(chat_id, 
-    "👠 Я — Лола.."
-    "Люблю Одесу — її нічне море, солоний вітер і теплі погляди незнайомців...🫣"
-    "У цьому боті я — твоя AI-дівчина…"
-    "Чуттєва, трохи небезпечна, дуже справжня ...🫦"
-    "Напиши мені \"Привіт\" — і побачиш, яка я на смак... 😈"
-)
+            msg = await context.bot.send_message(chat_id,
+                "👠 Я — Лола.."
+                "Люблю Одесу — її нічне море, солоний вітер і теплі погляди незнайомців...🫣"
+                "У цьому боті я — твоя AI-дівчина…"
+                "Чуттєва, трохи небезпечна, дуже справжня ...🫦"
+                "Напиши мені \"Привіт\" — і побачиш, яка я на смак... 😈"
+            )
 
         elif text == "👨‍🏫 Про творця 🦾":
             msg = await context.bot.send_message(chat_id,
@@ -134,23 +127,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot_message_history[user_id].append(msg.message_id)
         return
 
-    
-# --- START: USER NAME MEMORY LOGIC ---
-user_names = {}
-
-def extract_name_from_text(text):
-    possible_starters = ["мене звати", "я", "звати", "я —", "я -", "моє ім’я", "моё имя", "меня зовут"]
-    for starter in possible_starters:
-        if starter in text.lower():
-            parts = text.split()
-            for i, word in enumerate(parts):
-                if starter in word.lower() and i + 1 < len(parts):
-                    return parts[i + 1].capitalize()
-    return None
-# --- END: USER NAME MEMORY LOGIC ---
-
-
-# Якщо ручний ввід — не видаляємо, обробка AI
     try:
         assistant_id = os.getenv("ASSISTANT_ID")
         thread = openai_client.beta.threads.create()
@@ -159,41 +135,51 @@ def extract_name_from_text(text):
             role="user",
             content=text
         )
-        
-    # Перевірка імені
-    if user_id not in user_names:
-        extracted_name = extract_name_from_text(text)
-        if extracted_name:
-            user_names[user_id] = extracted_name
-            greeting = f"Мені приємно познайомитись, {extracted_name} 💋\n"
+
+        user_names = {}
+
+        def extract_name_from_text(text):
+            possible_starters = ["мене звати", "я", "звати", "я —", "я -", "моє ім’я", "моё имя", "меня зовут"]
+            for starter in possible_starters:
+                if starter in text.lower():
+                    parts = text.split()
+                    for i, word in enumerate(parts):
+                        if starter in word.lower() and i + 1 < len(parts):
+                            return parts[i + 1].capitalize()
+            return None
+
+        if user_id not in user_names:
+            extracted_name = extract_name_from_text(text)
+            if extracted_name:
+                user_names[user_id] = extracted_name
+                greeting = f"Мені приємно познайомитись, {extracted_name} 💋\n"
+            else:
+                greeting = ""
         else:
             greeting = ""
-    else:
-        greeting = ""
 
-    # Підготовка історії для контексту
-    user_history = user_histories.get(user_id, [])
-    cutoff_time = datetime.now() - timedelta(minutes=12)
-    filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
-    filtered_history = filtered_history[-11:]
+        user_history = user_histories.get(user_id, [])
+        cutoff_time = datetime.now() - timedelta(minutes=12)
+        filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
+        filtered_history = filtered_history[-11:]
 
-    for user_msg, bot_reply, _ in filtered_history:
-        openai_client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=user_msg,
-        )
-        openai_client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="assistant",
-            content=bot_reply,
-        )
+        for user_msg, bot_reply, _ in filtered_history:
+            openai_client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=user_msg,
+            )
+            openai_client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="assistant",
+                content=bot_reply,
+            )
 
-
-    run = openai_client.beta.threads.runs.create(
+        run = openai_client.beta.threads.runs.create(
             thread_id=thread.id,
             assistant_id=assistant_id
         )
+
         while True:
             run = openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
             if run.status == "completed":
@@ -214,7 +200,6 @@ def extract_name_from_text(text):
         msg = await update.message.reply_text(f"⚠️ Помилка: {e}")
         ai_message_ids[user_id].append(msg.message_id)
 
-
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     now = datetime.now()
@@ -234,7 +219,6 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=POST_BUTTONS
         )
 
-# Запуск
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -244,24 +228,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-# ⏱ AI Memory: обмеження — 11 діалогових пар або 12 хвилин
-user_history = user_histories.get(user_id, [])
-cutoff_time = datetime.now() - timedelta(minutes=12)
-filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
-filtered_history = filtered_history[-11:]
-
-# Перетворюємо на формат для GPT Assistant
-for user_msg, bot_reply, _ in filtered_history:
-    openai_client.beta.threads.messages.create(
-        thread_id=thread.id,
-        role="user",
-        content=user_msg,
-    )
-    openai_client.beta.threads.messages.create(
-        thread_id=thread.id,
-        role="assistant",
-        content=bot_reply,
-)
