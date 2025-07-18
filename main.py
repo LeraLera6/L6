@@ -264,4 +264,4 @@ for user_msg, bot_reply, _ in filtered_history:
         thread_id=thread.id,
         role="assistant",
         content=bot_reply,
-    )
+)
