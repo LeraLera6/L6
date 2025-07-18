@@ -20,6 +20,7 @@ from telegram.ext import (
 )
 from openai import OpenAI
 import asyncio
+user_histories = {}  # Store user message history
 
 # Логування
 logging.basicConfig(level=logging.INFO)
@@ -155,6 +156,10 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
         reply = messages.data[0].content[0].text.value
 
+        now = datetime.now()
+        if user_id not in user_histories:
+            user_histories[user_id] = []
+        user_histories[user_id].append((text, reply, now))
         msg = await update.message.reply_text(reply)
         ai_message_ids[user_id].append(msg.message_id)
 
@@ -212,4 +217,4 @@ for user_msg, bot_reply, _ in filtered_history:
         thread_id=thread.id,
         role="assistant",
         content=bot_reply,
-    )
+        )
