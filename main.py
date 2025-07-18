@@ -1,3 +1,7 @@
+# --- START: AI Thread Memory Management ---
+user_threads = {}
+last_active = {}
+# --- END: AI Thread Memory Management ---
 import logging
 import os
 from datetime import datetime, timedelta
