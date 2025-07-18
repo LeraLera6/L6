@@ -1,4 +1,3 @@
-
 # --- START: AI Thread Memory Management ---
 user_threads = {}
 last_active = {}
@@ -166,7 +165,7 @@ def extract_name_from_text(text):
         extracted_name = extract_name_from_text(text)
         if extracted_name:
             user_names[user_id] = extracted_name
-            greeting = f"Мені приємно познайомитись, {extracted_name} 🫦\n"
+            greeting = f"Мені приємно познайомитись, {extracted_name} 💋\n"
         else:
             greeting = ""
     else:
