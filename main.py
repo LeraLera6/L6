@@ -41,7 +41,7 @@ POST_MESSAGE = (
 )
 POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("💕 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
-    [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/Lera_v10_bot")]
+    [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/LOLA_A1_bot")]
 ])
 
 # /start — особисті повідомлення
