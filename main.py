@@ -82,7 +82,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Тоді просто напиши мені:  
 **ПРИВІТ** 🫦
 """, reply_markup=keyboard)
-            reply_markup=keyboard
         )
 
 bot_message_history = {}
