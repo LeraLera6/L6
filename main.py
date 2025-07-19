@@ -64,13 +64,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             resize_keyboard=True,
             one_time_keyboard=False
         )
-        await update.message.reply_text("""🌞Тут я AI-версія Лоли (v3.1)
+        await update.message.reply_text("""🔅Тут я AI-версія Лоли (v3.1)
 
-🔶 Ти можеш поспілкуватись зі мною тут як з AI подругою..
-🔶Або написати на мій основний акаунт: @Labi_Lola 🧪💞
-🔶Також можеш натиснути одну з кнопок нижче
+🔸️ Ти можеш поспілкуватись зі мною тут як з AI подругою..
+🔸️ Або написати на мій основний акаунт: @Labi_Lola 🧪💞
+🔸️ Також можеш натиснути одну з кнопок нижче
 
-🔶Або просто напиши мені
+🔶 Або просто напиши мені
 -ПРИВІТ-""", reply_markup=keyboard)
 
 bot_message_history = {}
