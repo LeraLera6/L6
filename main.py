@@ -1,3 +1,37 @@
+# AI interaction logging and labeling
+def is_button_text(message_text):
+    # Detect typical bot responses from button presses
+    return any(kw in message_text.lower() for kw in [
+        "про мене", "ціль проєкту", "подружки для спілкування", "про творця",
+        "заглянь у чат", "напиши мені", "бот створений", "пиши мені сюди", "найсоковитіші історії"
+    ])
+
+def format_context_for_ai(user_id, history):
+    context = []
+    for msg in history:
+        role = "[USER]" if msg["sender_id"] == user_id else "[LOLA]"
+        if is_button_text(msg["text"]):
+            continue  # Skip predefined button texts
+        context.append(f"{role}: {msg['text']}")
+    return "\n".join(context)
+
+def log_ai_interaction(user_id, prompt, response):
+    from datetime import datetime
+    with open("ai_interactions.log", "a", encoding="utf-8") as log_file:
+        log_file.write(f"---\nUser ID: {user_id}\nTime: {datetime.utcnow()}\nPrompt:\n{prompt}\nResponse:\n{response}\n---\n")
+
+# Store number of AI requests per user
+user_request_counter = {}
+
+def track_user_request(user_id):
+    if user_id not in user_request_counter:
+        user_request_counter[user_id] = 0
+    user_request_counter[user_id] += 1
+
+def get_user_request_count(user_id):
+    return user_request_counter.get(user_id, 0)
+
+
 import logging
 import os
 from datetime import datetime, timedelta
