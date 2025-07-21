@@ -1,39 +1,6 @@
-# AI interaction logging and labeling
-def is_button_text(message_text):
-    # Detect typical bot responses from button presses
-    return any(kw in message_text.lower() for kw in [
-        "про мене", "ціль проєкту", "подружки для спілкування", "про творця",
-        "заглянь у чат", "напиши мені", "бот створений", "пиши мені сюди", "найсоковитіші історії"
-    ])
-
-def format_context_for_ai(user_id, history):
-    context = []
-    for msg in history:
-        role = "[USER]" if msg["sender_id"] == user_id else "[LOLA]"
-        if is_button_text(msg["text"]):
-            continue  # Skip predefined button texts
-        context.append(f"{role}: {msg['text']}")
-    return "\n".join(context)
-
-def log_ai_interaction(user_id, prompt, response):
-    from datetime import datetime
-    with open("ai_interactions.log", "a", encoding="utf-8") as log_file:
-        log_file.write(f"---\nUser ID: {user_id}\nTime: {datetime.utcnow()}\nPrompt:\n{prompt}\nResponse:\n{response}\n---\n")
-
-# Store number of AI requests per user
-user_request_counter = {}
-
-def track_user_request(user_id):
-    if user_id not in user_request_counter:
-        user_request_counter[user_id] = 0
-    user_request_counter[user_id] += 1
-
-def get_user_request_count(user_id):
-    return user_request_counter.get(user_id, 0)
-
-
 import logging
 import os
+import asyncio
 from datetime import datetime, timedelta
 from telegram import (
     Update,
@@ -49,30 +16,24 @@ from telegram.ext import (
     CommandHandler
 )
 from openai import OpenAI
-import asyncio
 
 # --- START: AI Thread Memory Management ---
 user_threads = {}
-last_active = {}
-# --- END: AI Thread Memory Management ---
-# --- USER SESSION STATE (added) ---
+user_histories = {}
+ai_message_ids = {}
+bot_message_history = {}
 user_sessions = {}  # user_id: {thread_id, history, has_greeted, has_told_story, message_count}
-# -----------------------------------
-
-
-user_histories = {}  # Store user message history
+# --- END: AI Thread Memory Management ---
 
 # Логування
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# OpenAI
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Telegram токен
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 
-# Автопостинг — для груп
+# Автопостинг
 last_post_time = {}
 message_count = {}
 POST_INTERVAL = timedelta(minutes=30)
@@ -89,7 +50,6 @@ POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/LOLA_A1_bot")]
 ])
 
-# /start — особисті повідомлення
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
         keyboard = ReplyKeyboardMarkup(
@@ -111,135 +71,86 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🔶 Або просто напиши мені
 -ПРИВІТ-""", reply_markup=keyboard)
 
-bot_message_history = {}
-ai_message_ids = {}
-last_bot_message_id = {}
-
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    KNOWN_BUTTONS = [
-        "📩 Напиши мені в ЛС... 🧪💞",
-        "🔞 Мій канал передпоказу 🧪💞",
-        "👩‍🦰 Про мене... 🫦",
-        "👨‍🏫 Про творця 🦾"
-    ]
-
     user_id = update.effective_user.id
     text = update.message.text.strip()
     chat_id = update.effective_chat.id
 
-    if user_id not in bot_message_history:
-        bot_message_history[user_id] = []
-    if user_id not in ai_message_ids:
-        ai_message_ids[user_id] = []
+    # Кнопки
+    KNOWN_BUTTONS = {
+        "📩 Напиши мені в ЛС... 🧪💞": "👉 https://t.me/Labi_Lola",
+        "🔞 Мій канал передпоказу 🧪💞": "👉 https://t.me/+rKgDRzE3wLoyYTQy",
+        "👩‍🦰 Про мене... 🫦": (
+            "👠 Я — Лола.. Люблю Одесу — її нічне море, солоний вітер і теплі погляди незнайомців...🫣 "
+            "У цьому боті я — твоя AI-дівчина… Чуттєва, трохи небезпечна, дуже справжня ...🫦 "
+            "Напиши мені \"Привіт\" — і побачиш, яка я на смак... 😈"
+        ),
+        "👨‍🏫 Про творця 🦾": (
+            "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff 🔅 "
+            "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉 "
+            "(Хоча якщо чесно — це він мене попросив так написати 😅)"
+        )
+    }
 
     if text in KNOWN_BUTTONS:
         try:
             await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
         except:
             pass
-
-        for msg_id in bot_message_history[user_id]:
-            try:
-                await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
-            except:
-                pass
-        bot_message_history[user_id] = []
-
-        if text == "👩‍🦰 Про мене... 🫦":
-            msg = await context.bot.send_message(chat_id,
-                "👠 Я — Лола.."
-                "Люблю Одесу — її нічне море, солоний вітер і теплі погляди незнайомців...🫣"
-                "У цьому боті я — твоя AI-дівчина…"
-                "Чуттєва, трохи небезпечна, дуже справжня ...🫦"
-                "Напиши мені \"Привіт\" — і побачиш, яка я на смак... 😈"
-            )
-
-        elif text == "👨‍🏫 Про творця 🦾":
-            msg = await context.bot.send_message(chat_id,
-                "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff 🔅"
-                "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉"
-                "(Хоча якщо чесно — це він мене попросив так написати 😅)"
-            )
-        elif text == "📩 Напиши мені в ЛС... 🧪💞":
-            msg = await context.bot.send_message(chat_id, "👉 https://t.me/Labi_Lola")
-        elif text == "🔞 Мій канал передпоказу 🧪💞":
-            msg = await context.bot.send_message(chat_id, "👉 https://t.me/+rKgDRzE3wLoyYTQy")
-
-        bot_message_history[user_id].append(msg.message_id)
+        msg = await context.bot.send_message(chat_id, KNOWN_BUTTONS[text])
         return
 
-    try:
-        assistant_id = os.getenv("ASSISTANT_ID")
-        thread = openai_client.beta.threads.create()
+    # Сесія користувача
+    if user_id not in user_sessions:
+        user_sessions[user_id] = {
+            "thread_id": openai_client.beta.threads.create().id,
+            "history": [],
+            "has_greeted": False,
+            "has_told_story": False,
+            "message_count": 0
+        }
+
+    session = user_sessions[user_id]
+    session["message_count"] += 1
+    now = datetime.now()
+
+    # Додаємо тільки історію
+    for user_msg, bot_reply, _ in session["history"][-6:]:
         openai_client.beta.threads.messages.create(
-            thread_id=thread.id,
+            thread_id=session["thread_id"],
             role="user",
-            content=text
+            content=user_msg
+        )
+        openai_client.beta.threads.messages.create(
+            thread_id=session["thread_id"],
+            role="assistant",
+            content=bot_reply
         )
 
-        user_names = {}
+    # Додаємо поточне повідомлення після run
+    run = openai_client.beta.threads.runs.create(
+        thread_id=session["thread_id"],
+        assistant_id=ASSISTANT_ID
+    )
 
-        def extract_name_from_text(text):
-            possible_starters = ["мене звати", "я", "звати", "я —", "я -", "моє ім’я", "моё имя", "меня зовут"]
-            for starter in possible_starters:
-                if starter in text.lower():
-                    parts = text.split()
-                    for i, word in enumerate(parts):
-                        if starter in word.lower() and i + 1 < len(parts):
-                            return parts[i + 1].capitalize()
-            return None
+    # Поточне повідомлення
+    openai_client.beta.threads.messages.create(
+        thread_id=session["thread_id"],
+        role="user",
+        content=text
+    )
 
-        if user_id not in user_names:
-            extracted_name = extract_name_from_text(text)
-            if extracted_name:
-                user_names[user_id] = extracted_name
-                greeting = f"Мені приємно познайомитись, {extracted_name} 🫦\n"
-            else:
-                greeting = ""
-        else:
-            greeting = ""
+    while True:
+        run = openai_client.beta.threads.runs.retrieve(thread_id=session["thread_id"], run_id=run.id)
+        if run.status == "completed":
+            break
+        await asyncio.sleep(1)
 
-        user_history = user_histories.get(user_id, [])
-        cutoff_time = datetime.now() - timedelta(minutes=12)
-        filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
-        filtered_history = filtered_history[-11:]
+    messages = openai_client.beta.threads.messages.list(thread_id=session["thread_id"])
+    reply = messages.data[0].content[0].text.value
 
-        for user_msg, bot_reply, _ in filtered_history:
-            openai_client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role="user",
-                content=user_msg,
-            )
-            openai_client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role="assistant",
-                content=bot_reply,
-            )
-
-        run = openai_client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=assistant_id
-        )
-
-        while True:
-            run = openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-            if run.status == "completed":
-                break
-            await asyncio.sleep(1)
-
-        messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
-        reply = messages.data[0].content[0].text.value
-
-        now = datetime.now()
-        if user_id not in user_histories:
-            user_histories[user_id] = []
-        user_histories[user_id].append((text, reply, now))
-        msg = await update.message.reply_text(reply)
-        ai_message_ids[user_id].append(msg.message_id)
-
-    except Exception as e:
-        msg = await update.message.reply_text(f"⚠️ Помилка: {e}")
-        ai_message_ids[user_id].append(msg.message_id)
+    session["history"].append((text, reply, now))
+    await update.message.reply_text(reply)
 
 async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
