@@ -55,6 +55,10 @@ import asyncio
 user_threads = {}
 last_active = {}
 # --- END: AI Thread Memory Management ---
+# --- USER SESSION STATE (added) ---
+user_sessions = {}  # user_id: {thread_id, history, has_greeted, has_told_story, message_count}
+# -----------------------------------
+
 
 user_histories = {}  # Store user message history
 
