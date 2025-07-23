@@ -34,7 +34,6 @@ def get_user_request_count(user_id):
 
 import logging
 import os
-import random
 from datetime import datetime, timedelta
 from telegram import (
     Update,
@@ -43,7 +42,7 @@ from telegram import (
     ReplyKeyboardMarkup
 )
 from telegram.ext import (
-
+    ApplicationBuilder,
     ContextTypes,
     MessageHandler,
     filters,
@@ -51,11 +50,13 @@ from telegram.ext import (
 )
 from openai import OpenAI
 import asyncio
+import random
 
 # --- START: AI Thread Memory Management ---
 user_threads = {}
 last_active = {}
 # --- END: AI Thread Memory Management ---
+user_threads = {}
 
 user_histories = {}  # Store user message history
 
@@ -132,14 +133,11 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in KNOWN_BUTTONS:
         try:
             await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
-            await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
         except:
             pass
 
         for msg_id in bot_message_history[user_id]:
             try:
-
-        
                 await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
             except:
                 pass
@@ -170,7 +168,17 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        
+        last_history = user_histories.get(user_id, [])
+        if last_history and last_history[-1][0].strip().lower() == text.strip().lower():
+            alt_responses = [
+                "Мені здається, я вже відповідала 😌",
+                "Я трохи втомилась, але я все ще тут…",
+                "Може, спробуємо щось нове?.."
+            ]
+            reply = random.choice(alt_responses)
+            msg = await update.message.reply_text(reply)
+            ai_message_ids[user_id].append(msg.message_id)
+            return
         assistant_id = os.getenv("ASSISTANT_ID")
         if user_id not in user_threads:
             thread = openai_client.beta.threads.create()
