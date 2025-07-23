@@ -80,7 +80,7 @@ POST_MESSAGE = (
     "Натисни кнопку нижче ⬇️\n\n"
     "Або напиши мені в особисті повідомлення.\n\n"
     "Я чекаю... 🫦\n\n"
-    "⬇️ нова версія в л.с V3.1 ⬇️"
+    "⬇️ 💥 нова версія в л.с V3.2 ⬇️"
 )
 POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("💕 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
@@ -100,7 +100,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             resize_keyboard=True,
             one_time_keyboard=False
         )
-        await update.message.reply_text("""🔅Тут я AI-версія Лоли (v3.1)
+        await update.message.reply_text("""🔅Тут я AI-версія Лоли (v3.2)
 
 🔸️ Ти можеш поспілкуватись зі мною тут як з AI подругою..
 🔸️ Або написати на мій основний акаунт: @Labi_Lola 🧪💞
