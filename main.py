@@ -78,7 +78,7 @@ POST_MESSAGE = (
     "Натисни кнопку нижче ⬇️\n\n"
     "Або напиши мені в особисті повідомлення.\n\n"
     "Я чекаю... 🫦\n\n"
-    "⬇️ нова версія в л.с V3.2 ⬇️"
+    "⬇️ нова версія в л.с V3.1 ⬇️"
 )
 POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("💕 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
@@ -98,7 +98,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             resize_keyboard=True,
             one_time_keyboard=False
         )
-        await update.message.reply_text("""🔅Тут я AI-версія Лоли (v3.2)
+        await update.message.reply_text("""🔅Тут я AI-версія Лоли (v3.1)
 
 🔸️ Ти можеш поспілкуватись зі мною тут як з AI подругою..
 🔸️ Або написати на мій основний акаунт: @Labi_Lola 🧪💞
@@ -130,18 +130,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text in KNOWN_BUTTONS:
         try:
-
-        last_history = user_histories.get(user_id, [])
-        if last_history and last_history[-1][0].strip().lower() == text.strip().lower():
-            alt_responses = [
-                "Мені здається, я вже відповідала 😌",
-                "Я трохи втомилась, але я все ще тут…",
-                "Може, спробуємо щось нове?.."
-            ]
-            reply = random.choice(alt_responses)
-            msg = await update.message.reply_text(reply)
-            ai_message_ids[user_id].append(msg.message_id)
-            return
+            await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
             await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
         except:
             pass
@@ -207,7 +196,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_threads[user_id] = thread.id
         thread_id = user_threads[user_id]
         openai_client.beta.threads.messages.create(
-            thread_id=thread.id,
+            thread_id=thread_id,
             role="user",
             content=text
         )
@@ -242,17 +231,17 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
 
         run = openai_client.beta.threads.runs.create(
-            thread_id=thread.id,
+            thread_id=thread_id,
             assistant_id=assistant_id
         )
 
         while True:
-            run = openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+            run = openai_client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
             if run.status == "completed":
                 break
             await asyncio.sleep(1)
 
-        messages = openai_client.beta.threads.messages.list(thread_id=thread.id)
+        messages = openai_client.beta.threads.messages.list(thread_id=thread_id)
         reply = messages.data[0].content[0].text.value
 
         now = datetime.now()
