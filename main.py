@@ -205,11 +205,9 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         name = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.first_name or ""
         track_button_interaction(user_id, name)
-
         return
 
     try:
-
         last_history = user_histories.get(user_id, [])
         if last_history and last_history[-1][0].strip().lower() == text.strip().lower():
             alt_responses = [
@@ -218,13 +216,10 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Може, спробуємо щось нове?.."
             ]
             reply = random.choice(alt_responses)
-            
-        name = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.first_name or ""
-        track_ai_request(user_id, name)
-
-        msg = await update.message.reply_text(reply)
+            msg = await update.message.reply_text(reply)
             ai_message_ids[user_id].append(msg.message_id)
             return
+
         assistant_id = os.getenv("ASSISTANT_ID")
         if user_id not in user_threads:
             thread = openai_client.beta.threads.create()
@@ -235,35 +230,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             role="user",
             content=text
         )
-
-        user_names = {}
-
-        def extract_name_from_text(text):
-            possible_starters = ["мене звати", "я", "звати", "я —", "я -", "моє ім’я", "моё имя", "меня зовут"]
-            for starter in possible_starters:
-                if starter in text.lower():
-                    parts = text.split()
-                    for i, word in enumerate(parts):
-                        if starter in word.lower() and i + 1 < len(parts):
-                            return parts[i + 1].capitalize()
-            return None
-
-        if user_id not in user_names:
-            extracted_name = extract_name_from_text(text)
-            if extracted_name:
-                user_names[user_id] = extracted_name
-                greeting = f"Мені приємно познайомитись, {extracted_name} 🫦\n"
-            else:
-                greeting = ""
-        else:
-            greeting = ""
-
-        user_history = user_histories.get(user_id, [])
-        cutoff_time = datetime.now() - timedelta(minutes=12)
-        filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
-        filtered_history = filtered_history[-11:]
-
-        
 
         run = openai_client.beta.threads.runs.create(
             thread_id=thread_id,
@@ -283,7 +249,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if user_id not in user_histories:
             user_histories[user_id] = []
         user_histories[user_id].append((text, reply, now))
-        
+
         name = f"@{update.effective_user.username}" if update.effective_user.username else update.effective_user.first_name or ""
         track_ai_request(user_id, name)
 
@@ -293,38 +259,3 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         msg = await update.message.reply_text(f"⚠️ Помилка: {e}")
         ai_message_ids[user_id].append(msg.message_id)
-
-async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    now = datetime.now()
-
-    if chat_id not in last_post_time:
-        last_post_time[chat_id] = now
-        message_count[chat_id] = 0
-
-    message_count[chat_id] += 1
-
-    if (now - last_post_time[chat_id]) >= POST_INTERVAL or message_count[chat_id] >= 5:
-        last_post_time[chat_id] = now
-        message_count[chat_id] = 0
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=POST_MESSAGE,
-            reply_markup=POST_BUTTONS
-        )
-
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
-    
-    # --- START: reporting jobs ---
-    app.job_queue.run_once(lambda ctx: asyncio.create_task(send_statistics(ctx, "📊 Звіт за сьогодні:")), when=5)
-    app.job_queue.run_repeating(hourly_report, interval=3600, first=3600)
-    # --- END: reporting jobs ---
-
-    app.run_polling()
-
-if __name__ == '__main__':
-    main()
