@@ -259,3 +259,20 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         msg = await update.message.reply_text(f"⚠️ Помилка: {e}")
         ai_message_ids[user_id].append(msg.message_id)
+
+
+def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
+
+    # --- START: reporting jobs ---
+    app.job_queue.run_once(lambda ctx: asyncio.create_task(send_statistics(ctx, "📊 Звіт за сьогодні:")), when=5)
+    app.job_queue.run_repeating(hourly_report, interval=3600, first=3600)
+    # --- END: reporting jobs ---
+
+    app.run_polling()
+
+if __name__ == '__main__':
+    main()
