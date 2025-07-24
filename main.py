@@ -260,6 +260,24 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = await update.message.reply_text(f"⚠️ Помилка: {e}")
         ai_message_ids[user_id].append(msg.message_id)
 
+async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    now = datetime.now()
+
+    if chat_id not in last_post_time:
+        last_post_time[chat_id] = now
+        message_count[chat_id] = 0
+
+    message_count[chat_id] += 1
+
+    if (now - last_post_time[chat_id]) >= POST_INTERVAL or message_count[chat_id] >= 5:
+        last_post_time[chat_id] = now
+        message_count[chat_id] = 0
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=POST_MESSAGE,
+            reply_markup=POST_BUTTONS
+        )
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
