@@ -280,7 +280,8 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    import asyncio
+    app = ApplicationBuilder().token(BOT_TOKEN).build()  # use_job_queue=True автоматично в PTB 20+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
