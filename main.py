@@ -280,17 +280,16 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 def main():
-    import asyncio
-    app = ApplicationBuilder().token(BOT_TOKEN).build()  # use_job_queue=True автоматично в PTB 20+
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
 
     # --- START: reporting jobs ---
-    app.job_queue.run_once(lambda ctx: asyncio.create_task(send_statistics(ctx, "📊 Звіт за сьогодні:")), when=5)
-    app.job_queue.run_repeating(hourly_report, interval=3600, first=3600)
     # --- END: reporting jobs ---
 
+        # Звіт одразу після запуску
+    asyncio.create_task(send_statistics(context=type("Context", (), {"bot": app.bot}), tag="📊 Звіт при старті"))
     app.run_polling()
 
 if __name__ == '__main__':
