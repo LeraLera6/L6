@@ -15,14 +15,46 @@ def read_last_lines(path: str, n: int = 200) -> str:
         return f"⚠️ Не вдалося прочитати лог: {e}"
 
 def build_hourly_report() -> str:
-    logs = read_last_lines("ai_interactions.log", 80)
+    logs = read_last_lines("user_stats.log", 400)
     now_k = datetime.now(KYIV_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
-    return f"⏱️ Щогодинний звіт ({now_k})\n\n{logs}"
+
+    users = {}
+    ai_users = {}
+
+    for line in logs.splitlines():
+        if "—" in line:
+            parts = line.split("—")
+            if len(parts) >= 3:
+                user_id = parts[1].strip()
+                action = parts[2].strip()
+
+                if "AI" in action:
+                    if user_id not in ai_users:
+                        ai_users[user_id] = []
+                    if len(ai_users[user_id]) < 4:
+                        ai_users[user_id].append(action)
+                else:
+                    if user_id not in users:
+                        users[user_id] = []
+                    if len(users[user_id]) < 4:
+                        users[user_id].append(action)
+
+    body = f"⏱️ Щогодинний звіт ({now_k})\n\n"
+    body += f"👥 Унікальних користувачів (взаємодія з ботом): {len(users)}\n"
+    body += f"🤖 AI-взаємодій (унікальних юзерів): {len(ai_users)}\n\n"
+
+    body += "📋 Останні події:\n"
+    for user_id, actions in users.items():
+        for a in actions:
+            body += f"{user_id} — {a}\n"
+    for user_id, actions in ai_users.items():
+        for a in actions:
+            body += f"{user_id} — {a}\n"
+
+    return body[:4096]
 
 def build_daily_report() -> str:
-    logs = read_last_lines("ai_interactions.log", 400)
-    now_k = datetime.now(KYIV_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
-    return f"📊 Добовий звіт ({now_k}) — за останні 24 години\n\n{logs}"
+    return build_hourly_report()
 
 def next_kyiv_23_utc() -> datetime:
     now_k = datetime.now(KYIV_TZ)
