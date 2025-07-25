@@ -177,6 +177,15 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_histories[user_id] = []
         user_histories[user_id].append((text, reply, now))
         msg = await update.message.reply_text(reply)
+
+        # Logging to lera_log.txt
+        try:
+            with open("lera_log.txt", "a", encoding="utf-8") as log_file:
+                log_file.write(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] User {user_id}: {text}\n")
+                log_file.write(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] AI: {reply}\n\n")
+        except Exception as e:
+            print(f"Logging error: {e}")
+
         ai_message_ids[user_id].append(msg.message_id)
 
     except Exception as e:
