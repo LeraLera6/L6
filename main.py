@@ -1,4 +1,3 @@
-
 import logging
 import os
 from datetime import datetime, timedelta
@@ -20,41 +19,12 @@ import asyncio
 import random
 
 from start_reporting import start_reporting_thread
+from reporting_task import build_hourly_report
 
-# AI interaction logging and labeling
-def is_button_text(message_text):
-    return any(kw in message_text.lower() for kw in [
-        "про мене", "ціль проєкту", "подружки для спілкування", "про творця",
-        "заглянь у чат", "напиши мені", "бот створений", "пиши мені сюди", "найсоковитіші історії"
-    ])
-
-def format_context_for_ai(user_id, history):
-    context = []
-    for msg in history:
-        role = "[USER]" if msg["sender_id"] == user_id else "[LOLA]"
-        if is_button_text(msg["text"]):
-            continue
-        context.append(f"{role}: {msg['text']}")
-    return "\n".join(context)
-
-def log_ai_interaction(user_id, prompt, response):
-    from datetime import datetime
-    with open("ai_interactions.log", "a", encoding="utf-8") as log_file:
-        log_file.write(f"---\nUser ID: {user_id}\nTime: {datetime.utcnow()}\nPrompt:\n{prompt}\nResponse:\n{response}\n---\n")
-
-user_request_counter = {}
-
-def track_user_request(user_id):
-    if user_id not in user_request_counter:
-        user_request_counter[user_id] = 0
-    user_request_counter[user_id] += 1
-
-def get_user_request_count(user_id):
-    return user_request_counter.get(user_id, 0)
-
-# AI Threads & Histories
+# --- START: AI Thread Memory Management ---
 user_threads = {}
 last_active = {}
+# --- END: AI Thread Memory Management ---
 user_histories = {}
 
 # Логування
@@ -64,8 +34,9 @@ logger = logging.getLogger(__name__)
 # OpenAI
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Telegram токен
+# Telegram токен і лог чат
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "-2523896575"))
 
 # Автопостинг — для груп
 last_post_time = {}
@@ -84,6 +55,35 @@ POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/LOLA_A1_bot")]
 ])
 
+# AI interaction logging and labeling
+def is_button_text(message_text):
+    return any(kw in message_text.lower() for kw in [
+        "про мене", "ціль проєкту", "подружки для спілкування", "про творця",
+        "заглянь у чат", "напиши мені", "бот створений", "пиши мені сюди", "найсоковитіші історії"
+    ])
+
+def format_context_for_ai(user_id, history):
+    context = []
+    for msg in history:
+        role = "[USER]" if msg["sender_id"] == user_id else "[LOLA]"
+        if is_button_text(msg["text"]):
+            continue
+        context.append(f"{role}: {msg['text']}")
+    return "\n".join(context)
+
+def log_ai_interaction(user_id, prompt, response):
+    with open("ai_interactions.log", "a", encoding="utf-8") as log_file:
+        log_file.write(f"---\nUser ID: {user_id}\nTime: {datetime.utcnow()}\nPrompt:\n{prompt}\nResponse:\n{response}\n---\n")
+
+user_request_counter = {}
+def track_user_request(user_id):
+    if user_id not in user_request_counter:
+        user_request_counter[user_id] = 0
+    user_request_counter[user_id] += 1
+def get_user_request_count(user_id):
+    return user_request_counter.get(user_id, 0)
+
+# /start — особисті повідомлення
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
         keyboard = ReplyKeyboardMarkup(
@@ -107,6 +107,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 bot_message_history = {}
 ai_message_ids = {}
+last_bot_message_id = {}
 
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     KNOWN_BUTTONS = [
@@ -139,10 +140,19 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if text == "👩‍🦰 Про мене... 🫦":
             msg = await context.bot.send_message(chat_id,
-                "👠 Я — Лола.. Люблю Одесу...🫣 У цьому боті я — твоя AI-дівчина…")
+                "👠 Я — Лола.."
+                "Люблю Одесу — її нічне море, солоний вітер і теплі погляди незнайомців...🫣"
+                "У цьому боті я — твоя AI-дівчина…"
+                "Чуттєва, трохи небезпечна, дуже справжня ...🫦"
+                "Напиши мені \"Привіт\" — і побачиш, яка я на смак... 😈"
+            )
+
         elif text == "👨‍🏫 Про творця 🦾":
             msg = await context.bot.send_message(chat_id,
-                "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff 🔅")
+                "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff 🔅"
+                "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉"
+                "(Хоча якщо чесно — це він мене попросив так написати 😅)"
+            )
         elif text == "📩 Напиши мені в ЛС... 🧪💞":
             msg = await context.bot.send_message(chat_id, "👉 https://t.me/Labi_Lola")
         elif text == "🔞 Мій канал передпоказу 🧪💞":
@@ -152,18 +162,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        last_history = user_histories.get(user_id, [])
-        if last_history and last_history[-1][0].strip().lower() == text.strip().lower():
-            alt_responses = [
-                "Мені здається, я вже відповідала 😌",
-                "Я трохи втомилась, але я все ще тут…",
-                "Може, спробуємо щось нове?.."
-            ]
-            reply = random.choice(alt_responses)
-            msg = await update.message.reply_text(reply)
-            ai_message_ids[user_id].append(msg.message_id)
-            return
-
         assistant_id = os.getenv("ASSISTANT_ID")
         if user_id not in user_threads:
             thread = openai_client.beta.threads.create()
@@ -219,10 +217,17 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=POST_BUTTONS
         )
 
+async def report_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.id != LOG_CHAT_ID:
+        return
+    report = build_hourly_report()
+    await update.message.reply_text(report[:4096])
+
 def main():
     start_reporting_thread()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("report_now", report_now))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group))
     app.run_polling()
