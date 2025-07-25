@@ -1,38 +1,3 @@
-import threading
-import start_reporting
-# AI interaction logging and labeling
-def is_button_text(message_text):
-    # Detect typical bot responses from button presses
-    return any(kw in message_text.lower() for kw in [
-        "про мене", "ціль проєкту", "подружки для спілкування", "про творця",
-        "заглянь у чат", "напиши мені", "бот створений", "пиши мені сюди", "найсоковитіші історії"
-    ])
-
-def format_context_for_ai(user_id, history):
-    context = []
-    for msg in history:
-        role = "[USER]" if msg["sender_id"] == user_id else "[LOLA]"
-        if is_button_text(msg["text"]):
-            continue  # Skip predefined button texts
-        context.append(f"{role}: {msg['text']}")
-    return "\n".join(context)
-
-def log_ai_interaction(user_id, prompt, response):
-    from datetime import datetime
-    with open("ai_interactions.log", "a", encoding="utf-8") as log_file:
-        log_file.write(f"---\nUser ID: {user_id}\nTime: {datetime.utcnow()}\nPrompt:\n{prompt}\nResponse:\n{response}\n---\n")
-
-# Store number of AI requests per user
-user_request_counter = {}
-
-def track_user_request(user_id):
-    if user_id not in user_request_counter:
-        user_request_counter[user_id] = 0
-    user_request_counter[user_id] += 1
-
-def get_user_request_count(user_id):
-    return user_request_counter.get(user_id, 0)
-
 
 import logging
 import os
@@ -54,13 +19,43 @@ from openai import OpenAI
 import asyncio
 import random
 
-# --- START: AI Thread Memory Management ---
+from start_reporting import start_reporting_thread
+
+# AI interaction logging and labeling
+def is_button_text(message_text):
+    return any(kw in message_text.lower() for kw in [
+        "про мене", "ціль проєкту", "подружки для спілкування", "про творця",
+        "заглянь у чат", "напиши мені", "бот створений", "пиши мені сюди", "найсоковитіші історії"
+    ])
+
+def format_context_for_ai(user_id, history):
+    context = []
+    for msg in history:
+        role = "[USER]" if msg["sender_id"] == user_id else "[LOLA]"
+        if is_button_text(msg["text"]):
+            continue
+        context.append(f"{role}: {msg['text']}")
+    return "\n".join(context)
+
+def log_ai_interaction(user_id, prompt, response):
+    from datetime import datetime
+    with open("ai_interactions.log", "a", encoding="utf-8") as log_file:
+        log_file.write(f"---\nUser ID: {user_id}\nTime: {datetime.utcnow()}\nPrompt:\n{prompt}\nResponse:\n{response}\n---\n")
+
+user_request_counter = {}
+
+def track_user_request(user_id):
+    if user_id not in user_request_counter:
+        user_request_counter[user_id] = 0
+    user_request_counter[user_id] += 1
+
+def get_user_request_count(user_id):
+    return user_request_counter.get(user_id, 0)
+
+# AI Threads & Histories
 user_threads = {}
 last_active = {}
-# --- END: AI Thread Memory Management ---
-user_threads = {}
-
-user_histories = {}  # Store user message history
+user_histories = {}
 
 # Логування
 logging.basicConfig(level=logging.INFO)
@@ -89,7 +84,6 @@ POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("Напиши мені... 🫦", url="https://t.me/LOLA_A1_bot")]
 ])
 
-# /start — особисті повідомлення
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
         keyboard = ReplyKeyboardMarkup(
@@ -113,7 +107,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 bot_message_history = {}
 ai_message_ids = {}
-last_bot_message_id = {}
 
 async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     KNOWN_BUTTONS = [
@@ -137,7 +130,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
         except:
             pass
-
         for msg_id in bot_message_history[user_id]:
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
@@ -147,19 +139,10 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if text == "👩‍🦰 Про мене... 🫦":
             msg = await context.bot.send_message(chat_id,
-                "👠 Я — Лола.."
-                "Люблю Одесу — її нічне море, солоний вітер і теплі погляди незнайомців...🫣"
-                "У цьому боті я — твоя AI-дівчина…"
-                "Чуттєва, трохи небезпечна, дуже справжня ...🫦"
-                "Напиши мені \"Привіт\" — і побачиш, яка я на смак... 😈"
-            )
-
+                "👠 Я — Лола.. Люблю Одесу...🫣 У цьому боті я — твоя AI-дівчина…")
         elif text == "👨‍🏫 Про творця 🦾":
             msg = await context.bot.send_message(chat_id,
-                "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff 🔅"
-                "Нестандартний, точний, ідеаліст з добрим серцем і хитрим поглядом 😉"
-                "(Хоча якщо чесно — це він мене попросив так написати 😅)"
-            )
+                "👨‍🏫 🦾 Мій творець AI-версії — @nikita_onoff 🔅")
         elif text == "📩 Напиши мені в ЛС... 🧪💞":
             msg = await context.bot.send_message(chat_id, "👉 https://t.me/Labi_Lola")
         elif text == "🔞 Мій канал передпоказу 🧪💞":
@@ -169,7 +152,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-
         last_history = user_histories.get(user_id, [])
         if last_history and last_history[-1][0].strip().lower() == text.strip().lower():
             alt_responses = [
@@ -181,6 +163,7 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg = await update.message.reply_text(reply)
             ai_message_ids[user_id].append(msg.message_id)
             return
+
         assistant_id = os.getenv("ASSISTANT_ID")
         if user_id not in user_threads:
             thread = openai_client.beta.threads.create()
@@ -191,35 +174,6 @@ async def reply_to_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
             role="user",
             content=text
         )
-
-        user_names = {}
-
-        def extract_name_from_text(text):
-            possible_starters = ["мене звати", "я", "звати", "я —", "я -", "моє ім’я", "моё имя", "меня зовут"]
-            for starter in possible_starters:
-                if starter in text.lower():
-                    parts = text.split()
-                    for i, word in enumerate(parts):
-                        if starter in word.lower() and i + 1 < len(parts):
-                            return parts[i + 1].capitalize()
-            return None
-
-        if user_id not in user_names:
-            extracted_name = extract_name_from_text(text)
-            if extracted_name:
-                user_names[user_id] = extracted_name
-                greeting = f"Мені приємно познайомитись, {extracted_name} 🫦\n"
-            else:
-                greeting = ""
-        else:
-            greeting = ""
-
-        user_history = user_histories.get(user_id, [])
-        cutoff_time = datetime.now() - timedelta(minutes=12)
-        filtered_history = [entry for entry in user_history if entry[2] >= cutoff_time]
-        filtered_history = filtered_history[-11:]
-
-        
 
         run = openai_client.beta.threads.runs.create(
             thread_id=thread_id,
@@ -266,6 +220,7 @@ async def handle_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 def main():
+    start_reporting_thread()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, reply_to_private))
@@ -274,6 +229,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-# Старт звітування в окремому потоці
-reporting_thread = threading.Thread(target=start_reporting.start_reporting_loop, daemon=True)
-reporting_thread.start()
