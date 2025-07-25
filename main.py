@@ -1,3 +1,5 @@
+import threading
+import start_reporting
 # AI interaction logging and labeling
 def is_button_text(message_text):
     # Detect typical bot responses from button presses
@@ -272,3 +274,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+# Старт звітування в окремому потоці
+reporting_thread = threading.Thread(target=start_reporting.start_reporting_loop, daemon=True)
+reporting_thread.start()
