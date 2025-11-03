@@ -39,7 +39,7 @@ POST_MESSAGE = (
     "Натисни кнопку нижче ⬇️\n\n"
     "Або напиши мені в особисті повідомлення.\n\n"
     "Я чекаю... 🫦\n\n"
-    "⬇️ 💥 нова версія в л.с V3.2 ⬇️"
+    "⬇️ Нова AI версія мене 💖 Спробуй ⬇️"
 )
 POST_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("💕 Подружки для спілкування 🔞", url="https://t.me/virt_chat_ua1/134421")],
